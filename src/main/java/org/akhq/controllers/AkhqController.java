@@ -19,6 +19,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.akhq.configs.*;
+import org.akhq.configs.accessmanagement.AccessManagementProperties;
 import org.akhq.configs.security.*;
 import org.akhq.repositories.AbstractRepository;
 import org.akhq.security.annotation.HasAnyPermission;
@@ -52,6 +53,9 @@ public class AkhqController extends AbstractController {
 
     @Inject
     private VersionProvider versionProvider;
+
+    @Inject
+    private AccessManagementProperties accessManagementProperties;
 
     @HasAnyPermission()
     @Get("api/cluster")
@@ -159,6 +163,12 @@ public class AkhqController extends AbstractController {
             }
         }
         authDefinition.version = versionProvider.getVersion();
+        authDefinition.accessManagementEnabled = Boolean.TRUE.equals(accessManagementProperties.getEnabled());
+        if (authDefinition.accessManagementEnabled) {
+            authDefinition.requestableRoles = accessManagementProperties.getRequestableRoles().stream()
+                .map(r -> new RequestableRoleDefinition(r.getName(), r.getLabel()))
+                .collect(Collectors.toList());
+        }
 
         return authDefinition;
     }
@@ -278,6 +288,16 @@ public class AkhqController extends AbstractController {
         private List<OidcAuth> oidcAuths;
         private List<OauthAuth> oauthAuths;
         private String version;
+        private boolean accessManagementEnabled;
+        private List<RequestableRoleDefinition> requestableRoles;
+    }
+
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Getter
+    public static class RequestableRoleDefinition {
+        private String name;
+        private String label;
     }
 
     @AllArgsConstructor

@@ -18,7 +18,8 @@ import {
   faLevelDown,
   faList,
   faObjectGroup,
-  faRocket
+  faRocket,
+  faShieldAlt
 } from '@fortawesome/free-solid-svg-icons';
 
 class Sidebar extends Component {
@@ -56,7 +57,8 @@ class Sidebar extends Component {
       constants.SCHEMA,
       constants.TAIL,
       constants.TOPIC,
-      constants.ACLS
+      constants.ACLS,
+      constants.ACCESS_MANAGEMENT
     ];
     let path = this.props.location.pathname.split('/');
     if (tabs.find(el => el === path[2])) {
@@ -315,6 +317,7 @@ class Sidebar extends Component {
     } = this.state;
     const { expanded } = this.props;
     const roles = this.state.roles || {};
+    const auths = JSON.parse(sessionStorage.getItem('auths') || '{}');
     const tag = sessionStorage.getItem('version');
     const { listConnects, listKsqlDBs, listClusters } = this.setClustersAndConnectsAndKsqlDBs();
     return (
@@ -446,6 +449,8 @@ class Sidebar extends Component {
               {listKsqlDBs}
             </NavItem>
           )}
+          {auths.accessManagementEnabled &&
+            this.renderMenuItem(faShieldAlt, constants.ACCESS_MANAGEMENT, 'Access')}
           {this.renderMenuItem(faGear, constants.SETTINGS, 'Settings')}
         </SideNav.Nav>
       </SideNav>

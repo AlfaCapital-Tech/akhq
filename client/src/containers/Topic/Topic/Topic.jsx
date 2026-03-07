@@ -15,7 +15,8 @@ import { Link } from 'react-router-dom';
 import Root from '../../../components/Root';
 import { withRouter } from '../../../utils/withRouter';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEraser, faLevelDown, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { faEraser, faLevelDown, faPlus, faShieldAlt } from '@fortawesome/free-solid-svg-icons';
+import RequestAccessModal from '../../AccessManagement/RequestAccessModal';
 
 class Topic extends Root {
   state = {
@@ -34,7 +35,8 @@ class Topic extends Root {
     exportMessages: [],
     downloadFormat: 'Select',
     downloadOptions: ['csv', 'json'],
-    messages: []
+    messages: [],
+    showRequestAccessModal: false
   };
 
   tabs = ['data', 'partitions', 'groups', 'configs', 'acls', 'logs'];
@@ -235,6 +237,7 @@ class Topic extends Root {
     const { topicId, clusterId, selectedTab } = this.state;
 
     const roles = this.state.roles || {};
+    const auths = JSON.parse(sessionStorage.getItem('auths') || '{}');
     return (
       <div>
         <Header title={`Topic: ${topicId}`} />
@@ -377,6 +380,19 @@ class Topic extends Root {
                   <FontAwesomeIcon icon={faPlus} aria-hidden={true} /> Produce to topic
                 </Link>
               )}
+
+            </li>
+          </aside>
+        )}
+        {auths.accessManagementEnabled && (
+          <aside>
+            <li className="aside-button">
+              <div
+                className="btn btn-secondary"
+                onClick={() => this.setState({ showRequestAccessModal: true })}
+              >
+                <FontAwesomeIcon icon={faShieldAlt} aria-hidden={true} /> Request Access
+              </div>
             </li>
           </aside>
         )}
@@ -385,6 +401,12 @@ class Topic extends Root {
           handleCancel={this.closeDeleteModal}
           handleConfirm={this.emptyTopic}
           message={this.state.deleteMessage}
+        />
+        <RequestAccessModal
+          show={this.state.showRequestAccessModal}
+          onClose={() => this.setState({ showRequestAccessModal: false })}
+          clusterId={clusterId}
+          topicName={topicId}
         />
       </div>
     );

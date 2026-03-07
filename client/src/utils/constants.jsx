@@ -39,6 +39,7 @@ export const SCHEMA = 'schema';
 export const CONNECT = 'connect';
 export const KSQLDB = 'ksqldb';
 export const SETTINGS = 'settings';
+export const ACCESS_MANAGEMENT = 'access-management';
 
 // Configurable settings
 export const SETTINGS_VALUES = {
@@ -104,7 +105,8 @@ export default {
   ROLE_TYPE,
   VERSION,
   SETTINGS,
-  SETTINGS_VALUES
+  SETTINGS_VALUES,
+  ACCESS_MANAGEMENT
 };
 
 export const sortBy = (field, reverse, primer) => {

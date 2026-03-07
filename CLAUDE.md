@@ -15,8 +15,11 @@ docker compose -f docker-compose-local.yml up -d
 # 2. Backend (Java 17, Micronaut 4.10.7, Gradle) — запуск на :8080
 MICRONAUT_CONFIG_FILES=application-local.yml ./gradlew run -x installFrontend -x assembleFrontend
 
-# 3. Frontend (React) — запуск на :3000
+# 3. Frontend (React, Vite) — запуск на :4000 (или следующий свободный)
 cd client && npm install && npm start
+# Важно: нужен client/.env.local с proxy на backend:
+#   APP_BASE_URL=http://localhost:8080
+# Без него Vite проксирует на :8081 (дефолт оригинала)
 
 # Остановить инфраструктуру
 docker compose -f docker-compose-local.yml down
@@ -52,7 +55,13 @@ docker compose -f docker-compose-dev.yml up
   - `modules/accessmanagement/` — NotificationService (форк)
   - `repositories/accessmanagement/` — JPA-репозитории access-management (форк)
   - `models/accessmanagement/` — JPA-сущности access-management (форк)
-- `client/src/` — React frontend (JSX, SCSS)
+- `client/src/` — React frontend (JSX, SCSS, Vite, Bootstrap 5, react-router v7)
+  - `containers/` — страницы (Topic, Node, AccessManagement и т.д.)
+  - `components/` — переиспользуемые компоненты (Table, Modal, Form, Root)
+  - `utils/` — API клиент (`api.jsx`), эндпоинты (`endpoints.jsx`), роутинг (`AkhqRoutes.jsx`)
+  - Все страницы наследуют `Root` — базовый класс с `getApi()`/`postApi()`/`putApi()`/`removeApi()`
+  - Авторизация через `sessionStorage`: `roles`, `user`, `auths` (включая `accessManagementEnabled`)
+  - Флаг `accessManagementEnabled` из `/api/auths` управляет видимостью раздела Access Management
 - `fork-docs/TASK-*` — постановки задач на доработку (ADR, аналитика, ревью)
 
 ## Система авторизации

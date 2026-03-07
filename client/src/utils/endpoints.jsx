@@ -349,6 +349,37 @@ export const uriTopicLastRecord = (clusterId, topicList) => {
   return `${apiUrl}/${clusterId}/topic/last-record?topics=${topicList}`;
 };
 
+// Access Management
+export const uriAccessManagementCreateRequest = clusterId =>
+  `${apiUrl}/${clusterId}/access-management/request`;
+
+export const uriAccessManagementMyRequests = clusterId =>
+  `${apiUrl}/${clusterId}/access-management/requests/my`;
+
+export const uriAccessManagementPendingRequests = clusterId =>
+  `${apiUrl}/${clusterId}/access-management/requests/pending`;
+
+export const uriAccessManagementAllRequests = clusterId =>
+  `${apiUrl}/${clusterId}/access-management/requests/all`;
+
+export const uriAccessManagementApprove = (clusterId, requestId) =>
+  `${apiUrl}/${clusterId}/access-management/requests/${requestId}/approve`;
+
+export const uriAccessManagementReject = (clusterId, requestId) =>
+  `${apiUrl}/${clusterId}/access-management/requests/${requestId}/reject`;
+
+export const uriAccessManagementAccesses = clusterId =>
+  `${apiUrl}/${clusterId}/access-management/accesses`;
+
+export const uriAccessManagementRevokeAccess = (clusterId, accessId) =>
+  `${apiUrl}/${clusterId}/access-management/accesses/${accessId}`;
+
+export const uriAccessManagementTopicOwners = (clusterId, topicName) =>
+  `${apiUrl}/${clusterId}/access-management/topic/${topicName}/owners`;
+
+export const uriAccessManagementMyAccess = (clusterId, topicName) =>
+  `${apiUrl}/${clusterId}/access-management/topic/${topicName}/my-access`;
+
 export default {
   apiUrl,
   uriClusters,

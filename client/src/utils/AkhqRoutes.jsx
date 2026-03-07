@@ -26,6 +26,8 @@ import ConsumerGroupOffsetDelete from '../containers/ConsumerGroup/ConsumerGroup
 import AclDetails from '../containers/Acl/AclDetail';
 import Login from '../containers/Login';
 import Settings from '../containers/Settings/Settings';
+import MyRequests from '../containers/AccessManagement/MyRequests';
+import Management from '../containers/AccessManagement/Management';
 import { organizeRoles } from './converters';
 import { uriAuths, uriClusters, uriCurrentUser } from './endpoints';
 import Root from '../components/Root';
@@ -136,6 +138,7 @@ class AkhqRoutes extends Root {
     const { location } = this.props;
     const clusters = this.state.clusters || [];
     const roles = JSON.parse(sessionStorage.getItem('roles')) || {};
+    const auths = JSON.parse(sessionStorage.getItem('auths') || '{}');
     let clusterId = this.state.clusterId;
 
     if (this.state.user.length <= 0) {
@@ -306,6 +309,20 @@ class AkhqRoutes extends Root {
                   exact
                   path="/ui/:clusterId/ksqldb/:ksqlDBId/:tab?"
                   element={<KsqlDBList />}
+                />
+              )}
+              {auths.accessManagementEnabled && (
+                <Route
+                  exact
+                  path="/ui/:clusterId/access-management"
+                  element={<MyRequests />}
+                />
+              )}
+              {auths.accessManagementEnabled && (
+                <Route
+                  exact
+                  path="/ui/:clusterId/access-management/manage"
+                  element={<Management />}
                 />
               )}
               <Route exact path="/ui/:clusterId/settings" element={<Settings />} />
