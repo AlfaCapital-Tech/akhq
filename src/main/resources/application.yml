@@ -142,6 +142,9 @@ akhq:
   audit:
     enabled: false
 
+  access-management:
+    enabled: false
+
   security:
     default-group: admin
     roles:

@@ -321,6 +321,35 @@ akhq:
           groups:
             - admin
 
+    # Access management — self-service topic access requests (fork feature)
+    # When enabled, users can request access to topic data via UI,
+    # and prefix owners / super-admins can approve or reject requests.
+    # Requires PostgreSQL datasource and Flyway migration.
+    access-management:
+      enabled: false # true to enable, false = original AKHQ behavior
+      super-admins: # users who can approve/reject all requests
+        - username: "admin"
+          email: "admin@company.ru"
+      prefix-owners: # topic prefix owners who approve requests for matching topics
+        - prefix: "eis\\..*"
+          owners:
+            - username: "ivanov"
+              email: "ivanov@company.ru"
+        - prefix: "edo\\..*"
+          owners:
+            - username: "smirnov"
+              email: "smirnov@company.ru"
+      requestable-roles: # roles that users can request
+        - name: READ
+          label: "Read data"
+          akhq-role: topic-data-read
+        - name: WRITE
+          label: "Read and write data"
+          akhq-role: topic-data-write
+      notifications:
+        enabled: false # true = send email via SMTP, false = log only
+        from: "akhq@company.ru"
+
     # Data masking configuration
     data-masking:
       filters:

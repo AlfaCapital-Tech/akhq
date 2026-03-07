@@ -4,17 +4,34 @@
 
 ## Сборка и запуск
 
+### Локальная разработка (рекомендуемый способ)
+
+Инфраструктура в Docker, backend и frontend — локально:
+
 ```bash
-# Backend (Java 17, Micronaut 4.10.7, Gradle)
-./gradlew build
-./gradlew run                          # запуск dev-сервера на :8080
+# 1. Поднять инфраструктуру (Kafka, PostgreSQL, Schema Registry, Connect, ksqlDB)
+docker compose -f docker-compose-local.yml up -d
 
-# Frontend (React)
-cd client && npm install && npm start  # dev-сервер на :3000
+# 2. Backend (Java 17, Micronaut 4.10.7, Gradle) — запуск на :8080
+MICRONAUT_CONFIG_FILES=application-local.yml ./gradlew run -x installFrontend -x assembleFrontend
 
-# Docker (полное окружение: Kafka + Schema Registry + Connect)
+# 3. Frontend (React) — запуск на :3000
+cd client && npm install && npm start
+
+# Остановить инфраструктуру
+docker compose -f docker-compose-local.yml down
+```
+
+В IDEA: запускать `org.akhq.App` с VM option `-Dmicronaut.config.files=application-local.yml`.
+
+### Docker (всё-в-одном)
+
+```bash
+# Полное окружение в Docker (с PostgreSQL)
 docker compose -f docker-compose-dev.yml up
 ```
+
+**Важно:** после работы с docker-compose-dev контейнер создаёт файлы в `build/` от root. Перед локальной сборкой: `sudo rm -rf build/`
 
 ## Тесты
 
@@ -30,9 +47,13 @@ docker compose -f docker-compose-dev.yml up
   - `repositories/` — бизнес-логика работы с Kafka
   - `models/` — доменные модели
   - `configs/security/` — конфигурация ролей, групп, LDAP, OIDC
-  - `security/` — аутентификация, маппинг, claim providers, authorization rule
+  - `configs/accessmanagement/` — конфигурация access-management (форк)
+  - `security/claim/` — claim providers (LocalSecurity, DatabaseClaimProvider)
+  - `modules/accessmanagement/` — NotificationService (форк)
+  - `repositories/accessmanagement/` — JPA-репозитории access-management (форк)
+  - `models/accessmanagement/` — JPA-сущности access-management (форк)
 - `client/src/` — React frontend (JSX, SCSS)
-- `fork-docs/TASK-*` — постановки задач на доработку (ADR, аналитика, тестирование)
+- `fork-docs/TASK-*` — постановки задач на доработку (ADR, аналитика, ревью)
 
 ## Система авторизации
 
@@ -48,8 +69,10 @@ docker compose -f docker-compose-dev.yml up
 - Новый код — в отдельных пакетах (например `org.akhq.configs.accessmanagement`)
 - Фичи форка управляются флагом `enabled` в конфигурации — при `false` поведение = оригинал
 - Текст коммитов на русском, начинать с номера задачи (спросить у пользователя)
-- Постановки задач в `docs/TASK-*/README.md`
+- Постановки задач в `fork-docs/TASK-*/`
+- **ErrorController** ловит `Throwable` → 500, поэтому в контроллерах используем `HttpResponse<?>` вместо исключений
+- Тесты с БД наследуются от `AbstractTestWithPostgres` (Kafka + PostgreSQL Testcontainers)
 
 ## Текущие задачи
 
-- **TASK-1**: Система самообслуживания доступов к топикам (PostgreSQL, Flyway, Micronaut Data JPA). См. `docs/TASK-1/README.md`
+- **TASK-1**: Система самообслуживания доступов к топикам (PostgreSQL, Flyway, Micronaut Data JPA). Backend готов, frontend в работе. См. `fork-docs/TASK-1/`

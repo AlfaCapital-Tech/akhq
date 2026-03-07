@@ -11,3 +11,25 @@ akhq:
       ksqldb:
         - name: "ksqldb"
           url: "http://ksqldb:8088"
+
+jpa:
+  default:
+    entity-scan:
+      packages:
+        - 'org.akhq.models.accessmanagement'
+    properties:
+      hibernate:
+        hbm2ddl:
+          auto: validate
+
+datasources:
+  default:
+    url: jdbc:postgresql://postgres:5432/akhq
+    username: akhq
+    password: akhq
+    driver-class-name: org.postgresql.Driver
+
+flyway:
+  datasources:
+    default:
+      enabled: true

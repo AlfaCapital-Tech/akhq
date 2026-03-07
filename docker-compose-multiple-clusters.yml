@@ -3,8 +3,22 @@ volumes:
     driver: local
   kafka-data-1:
     driver: local
+  postgres-data:
+    driver: local
 
 services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: akhq
+      POSTGRES_USER: akhq
+      POSTGRES_PASSWORD: akhq
+    volumes:
+      - postgres-data:/var/lib/postgresql/data:Z
+    ports:
+      - "5432:5432"
+
   akhq:
     image: tchiotludo/akhq
     environment:
@@ -26,12 +40,13 @@ services:
                 bootstrap.servers: "kafka-1:29072"
     ports:
       - 8080:8080
-    links:
+    depends_on:
       - kafka-0
       - schema-registry-0
       - connect-0
       - connect-1
       - kafka-1
+      - postgres
 
   kafka-0:
     image: confluentinc/cp-kafka:${CONFLUENT_VERSION:-latest}

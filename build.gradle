@@ -175,6 +175,15 @@ dependencies {
 
 
 
+    // access-management (fork: TASK-1)
+    annotationProcessor("io.micronaut.data:micronaut-data-processor")
+    implementation("io.micronaut.data:micronaut-data-hibernate-jpa")
+    implementation("io.micronaut.sql:micronaut-jdbc-hikari")
+    implementation("io.micronaut.flyway:micronaut-flyway")
+    runtimeOnly("org.flywaydb:flyway-database-postgresql")
+    runtimeOnly("org.postgresql:postgresql")
+    implementation("io.micronaut.email:micronaut-email-javamail")
+
     // Password hashing
     implementation("org.mindrot:jbcrypt:0.4")
 
@@ -267,6 +276,7 @@ dependencies {
 
     testImplementation("org.awaitility:awaitility:4.3.0")
     testImplementation("org.testcontainers:kafka:1.21.4")
+    testImplementation("org.testcontainers:postgresql:1.21.4")
 }
 
 testlogger {

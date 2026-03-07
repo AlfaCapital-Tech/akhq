@@ -1,0 +1,55 @@
+akhq:
+  connections:
+    local:
+      properties:
+        bootstrap.servers: "localhost:9092"
+      schema-registry:
+        url: "http://localhost:8085"
+      connect:
+        - name: "connect"
+          url: "http://localhost:8083"
+      ksqldb:
+        - name: "ksqldb"
+          url: "http://localhost:8088"
+
+  access-management:
+    enabled: true
+    super-admins:
+      - username: "anonymous"
+        email: "admin@test.local"
+    prefix-owners:
+      - prefix: "test\\..*"
+        owners:
+          - username: "owner1"
+            email: "owner1@test.local"
+    requestable-roles:
+      - name: READ
+        label: "Read data"
+        akhq-role: topic-data-read
+      - name: WRITE
+        label: "Read and write data"
+        akhq-role: topic-data-write
+    notifications:
+      enabled: false
+
+jpa:
+  default:
+    entity-scan:
+      packages:
+        - 'org.akhq.models.accessmanagement'
+    properties:
+      hibernate:
+        hbm2ddl:
+          auto: validate
+
+datasources:
+  default:
+    url: jdbc:postgresql://localhost:5432/akhq
+    username: akhq
+    password: akhq
+    driver-class-name: org.postgresql.Driver
+
+flyway:
+  datasources:
+    default:
+      enabled: true
