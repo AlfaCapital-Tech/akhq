@@ -62,3 +62,9 @@ docs/.vuepress/dist
 /.factorypath
 /client/.settings
 .DS_Store
+
+## Playwright MCP
+.playwright-mcp/
+
+## Local configs
+application-demo.yml

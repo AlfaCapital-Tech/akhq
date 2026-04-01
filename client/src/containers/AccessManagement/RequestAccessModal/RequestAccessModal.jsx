@@ -103,7 +103,7 @@ class RequestAccessModal extends Root {
                       </div>
                     )}
 
-                    {owners.length > 0 && (
+                    {owners.length > 0 ? (
                       <div className="mb-3">
                         <label className="form-label fw-bold">Topic owners:</label>
                         <div>
@@ -113,6 +113,10 @@ class RequestAccessModal extends Root {
                             </span>
                           ))}
                         </div>
+                      </div>
+                    ) : (
+                      <div className="alert alert-warning mb-3">
+                        <strong>Owner not assigned.</strong> The request will be reviewed by an administrator.
                       </div>
                     )}
 

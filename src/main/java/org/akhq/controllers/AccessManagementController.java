@@ -61,7 +61,7 @@ public class AccessManagementController {
         String username = getCurrentUsername();
 
         List<AccessRequestEntity> existing = accessRequestRepository
-                .findByUsernameAndTopicNameAndStatus(username, body.getTopicName(), "PENDING");
+                .findByUsernameAndTopicNameAndStatus(username, body.getTopicName(), AccessRequestEntity.STATUS_PENDING);
         if (!existing.isEmpty()) {
             return HttpResponse.status(HttpStatus.CONFLICT)
                     .body(new JsonError("Pending request already exists for this topic"));
@@ -76,7 +76,7 @@ public class AccessManagementController {
         entity.setUsername(username);
         entity.setTopicName(body.getTopicName());
         entity.setRole(body.getRole());
-        entity.setStatus("PENDING");
+        entity.setStatus(AccessRequestEntity.STATUS_PENDING);
         entity.setReason(body.getReason());
 
         AccessRequestEntity saved = accessRequestRepository.save(entity);
@@ -118,6 +118,18 @@ public class AccessManagementController {
 
     // --- Owner/SuperAdmin endpoints ---
 
+    @Get("/requests/pending/count")
+    @Operation(tags = {"Access Management"}, summary = "Get count of pending requests for owned topics")
+    public HttpResponse<?> pendingRequestsCount(String cluster) {
+        if (!isEnabled()) {
+            return notFoundResponse("Access management is disabled");
+        }
+        String username = getCurrentUsername();
+        List<AccessRequestEntity> all = accessRequestRepository.findByStatus(AccessRequestEntity.STATUS_PENDING);
+        int count = filterByOwnership(all, username).size();
+        return HttpResponse.ok(Map.of("count", count));
+    }
+
     @Get("/requests/pending")
     @Operation(tags = {"Access Management"}, summary = "Get pending requests for owned topics")
     public HttpResponse<?> pendingRequests(String cluster) {
@@ -125,7 +137,7 @@ public class AccessManagementController {
             return notFoundResponse("Access management is disabled");
         }
         String username = getCurrentUsername();
-        List<AccessRequestEntity> all = accessRequestRepository.findByStatus("PENDING");
+        List<AccessRequestEntity> all = accessRequestRepository.findByStatus(AccessRequestEntity.STATUS_PENDING);
         return HttpResponse.ok(filterByOwnership(all, username));
     }
 
@@ -159,11 +171,11 @@ public class AccessManagementController {
                     .body(new JsonError("You are not an owner of topic: " + request.getTopicName()));
         }
 
-        if (!"PENDING".equals(request.getStatus())) {
+        if (!AccessRequestEntity.STATUS_PENDING.equals(request.getStatus())) {
             return HttpResponse.badRequest(new JsonError("Request is not in PENDING status"));
         }
 
-        request.setStatus("APPROVED");
+        request.setStatus(AccessRequestEntity.STATUS_APPROVED);
         request.setResolvedBy(username);
         request.setResolvedAt(Instant.now());
         accessRequestRepository.update(request);
@@ -204,11 +216,11 @@ public class AccessManagementController {
                     .body(new JsonError("You are not an owner of topic: " + request.getTopicName()));
         }
 
-        if (!"PENDING".equals(request.getStatus())) {
+        if (!AccessRequestEntity.STATUS_PENDING.equals(request.getStatus())) {
             return HttpResponse.badRequest(new JsonError("Request is not in PENDING status"));
         }
 
-        request.setStatus("REJECTED");
+        request.setStatus(AccessRequestEntity.STATUS_REJECTED);
         request.setResolvedBy(username);
         request.setResolvedAt(Instant.now());
         request.setRejectReason(body.getRejectReason());
@@ -287,13 +299,13 @@ public class AccessManagementController {
 
     private boolean isSuperAdmin(String username) {
         return properties.getSuperAdmins().stream()
-                .anyMatch(sa -> sa.getUsername().equals(username));
+                .anyMatch(sa -> sa.getUsername().equalsIgnoreCase(username));
     }
 
     private List<String> getOwnedPrefixes(String username) {
         return properties.getPrefixOwners().stream()
                 .filter(po -> po.getOwners().stream()
-                        .anyMatch(o -> o.getUsername().equals(username)))
+                        .anyMatch(o -> o.getUsername().equalsIgnoreCase(username)))
                 .map(PrefixOwner::getPrefix)
                 .collect(Collectors.toList());
     }

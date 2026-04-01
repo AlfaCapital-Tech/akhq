@@ -91,10 +91,12 @@ class Header extends Root {
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
         >
           {' '}
-          <h1>{title}</h1>{' '}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h1 style={{ margin: 0 }}>{title}</h1>
+            {children}
+          </div>
           <div>
             {this._renderLogin()}
-            {children}
           </div>
         </div>
       </React.Fragment>

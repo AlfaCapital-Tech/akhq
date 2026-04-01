@@ -1,4 +1,67 @@
 akhq:
+  access-management:
+    enabled: true
+    super-admins:
+      - username: admin
+        email: admin@example.com
+    prefix-owners:
+      - prefix: "eis\\..*"
+        owners:
+          - username: admin
+            email: admin@example.com
+      - prefix: "edo\\..*"
+        owners:
+          - username: admin
+            email: admin@example.com
+      - prefix: "lk\\..*"
+        owners:
+          - username: admin
+            email: admin@example.com
+    requestable-roles:
+      - name: READ
+        label: "Read data"
+        akhq-role: topic-data-read
+      - name: WRITE
+        label: "Read and write data"
+        akhq-role: topic-data-write
+    notifications:
+      enabled: false
+
+  security:
+    default-group: browser
+    roles:
+      topic-browse:
+        - resources: [TOPIC]
+          actions: [READ, READ_CONFIG]
+        - resources: [NODE]
+          actions: [READ]
+        - resources: [CONSUMER_GROUP]
+          actions: [READ]
+        - resources: [ACL]
+          actions: [READ]
+        - resources: [SCHEMA]
+          actions: [READ]
+      topic-data-read:
+        - resources: [TOPIC, TOPIC_DATA]
+          actions: [READ]
+      topic-data-write:
+        - resources: [TOPIC]
+          actions: [READ]
+        - resources: [TOPIC_DATA]
+          actions: [READ, CREATE]
+    groups:
+      browser:
+        - role: topic-browse
+    basic-auth:
+      - username: petrov
+        password: c07d9e69d90a576c8a6690b35cc0912f48677cea2f560cf737058524744aff68
+        groups:
+          - browser
+      - username: admin
+        password: "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"
+        groups:
+          - browser
+
   connections:
     local:
       properties:
@@ -28,6 +91,10 @@ datasources:
     username: akhq
     password: akhq
     driver-class-name: org.postgresql.Driver
+
+micronaut:
+  security:
+    enabled: true
 
 flyway:
   datasources:

@@ -21,6 +21,8 @@ import {
   faRocket,
   faShieldAlt
 } from '@fortawesome/free-solid-svg-icons';
+import { uriAccessManagementPendingCount } from '../../utils/endpoints';
+import { get } from '../../utils/api';
 
 class Sidebar extends Component {
   state = {
@@ -39,7 +41,8 @@ class Sidebar extends Component {
     enableConnect: false,
     enableKsqlDB: false,
     roles: JSON.parse(sessionStorage.getItem('roles')),
-    height: 'auto'
+    height: 'auto',
+    pendingCount: 0
   };
 
   static getDerivedStateFromProps(nextProps, prevState) {
@@ -67,8 +70,17 @@ class Sidebar extends Component {
     if (this.props.clusters && this.props.clusters.length > 0) {
       this.handleGetClusters(this.props.clusters || [], selectedCluster => {
         this.handleRegistryAndConnectsAndKsqlDBs(selectedCluster);
+        this.loadPendingCount(selectedCluster);
       });
     }
+
+    this.pendingCountInterval = setInterval(() => {
+      if (this.state.selectedCluster) this.loadPendingCount(this.state.selectedCluster);
+    }, 30000);
+  }
+
+  componentWillUnmount() {
+    clearInterval(this.pendingCountInterval);
   }
 
   handleGetClusters(clusters, callback = () => {}) {
@@ -103,8 +115,17 @@ class Sidebar extends Component {
     if (this.props.clusters !== prevProps.clusters) {
       this.handleGetClusters(this.props.clusters || [], selectedCluster => {
         this.handleRegistryAndConnectsAndKsqlDBs(selectedCluster);
+        this.loadPendingCount(selectedCluster);
       });
     }
+  }
+
+  loadPendingCount(clusterId) {
+    const auths = JSON.parse(sessionStorage.getItem('auths') || '{}');
+    if (!auths.accessManagementEnabled) return;
+    get(uriAccessManagementPendingCount(clusterId))
+      .then(res => this.setState({ pendingCount: res.data?.count || 0 }))
+      .catch(() => {});
   }
 
   handleRegistryAndConnectsAndKsqlDBs(selectedCluster) {
@@ -229,6 +250,7 @@ class Sidebar extends Component {
         );
 
         this.handleRegistryAndConnectsAndKsqlDBs(selectedCluster);
+        this.loadPendingCount(selectedCluster);
       }
     );
   }
@@ -319,6 +341,7 @@ class Sidebar extends Component {
     const roles = this.state.roles || {};
     const auths = JSON.parse(sessionStorage.getItem('auths') || '{}');
     const tag = sessionStorage.getItem('version');
+    const pathname = window.location.pathname;
     const { listConnects, listKsqlDBs, listClusters } = this.setClustersAndConnectsAndKsqlDBs();
     return (
       <SideNav
@@ -449,8 +472,47 @@ class Sidebar extends Component {
               {listKsqlDBs}
             </NavItem>
           )}
-          {auths.accessManagementEnabled &&
-            this.renderMenuItem(faShieldAlt, constants.ACCESS_MANAGEMENT, 'Access')}
+          {auths.accessManagementEnabled && (
+            <NavItem
+              eventKey="Access"
+              className={pathname.includes(constants.ACCESS_MANAGEMENT) ? 'active' : ''}
+              onClick={() => {
+                this.setState({ selectedTab: constants.ACCESS_MANAGEMENT });
+                this.props.router.navigate(`/ui/${selectedCluster}/${constants.ACCESS_MANAGEMENT}`, { replace: false });
+                return false;
+              }}
+            >
+              <NavIcon>
+                {' '}
+                <Link
+                  to={`/ui/${selectedCluster}/${constants.ACCESS_MANAGEMENT}`}
+                  onClick={e => {
+                    this.setState({ selectedTab: constants.ACCESS_MANAGEMENT });
+                    e.preventDefault();
+                  }}
+                >
+                  <FontAwesomeIcon icon={faShieldAlt} aria-hidden={true} />
+                </Link>
+              </NavIcon>
+              <NavText>
+                {' '}
+                <Link
+                  to={`/ui/${selectedCluster}/${constants.ACCESS_MANAGEMENT}`}
+                  onClick={e => {
+                    this.setState({ selectedTab: constants.ACCESS_MANAGEMENT });
+                    e.preventDefault();
+                  }}
+                >
+                  Access
+                  {this.state.pendingCount > 0 && (
+                    <span className="badge bg-danger ms-2" style={{ fontSize: '0.7em' }}>
+                      {this.state.pendingCount}
+                    </span>
+                  )}
+                </Link>
+              </NavText>
+            </NavItem>
+          )}
           {this.renderMenuItem(faGear, constants.SETTINGS, 'Settings')}
         </SideNav.Nav>
       </SideNav>

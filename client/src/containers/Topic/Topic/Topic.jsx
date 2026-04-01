@@ -240,7 +240,16 @@ class Topic extends Root {
     const auths = JSON.parse(sessionStorage.getItem('auths') || '{}');
     return (
       <div>
-        <Header title={`Topic: ${topicId}`} />
+        <Header title={`Topic: ${topicId}`}>
+          {auths.accessManagementEnabled && (
+            <button
+              className="btn btn-outline-primary btn-sm me-2"
+              onClick={() => this.setState({ showRequestAccessModal: true })}
+            >
+              <FontAwesomeIcon icon={faShieldAlt} aria-hidden={true} /> Request Access
+            </button>
+          )}
+        </Header>
         <div className="tabs-container" style={{ marginBottom: '4%' }}>
           <ul className="nav nav-tabs" role="tablist">
             {roles.TOPIC_DATA && roles.TOPIC_DATA.includes('READ') && (
@@ -381,18 +390,6 @@ class Topic extends Root {
                 </Link>
               )}
 
-            </li>
-          </aside>
-        )}
-        {auths.accessManagementEnabled && (
-          <aside>
-            <li className="aside-button">
-              <div
-                className="btn btn-secondary"
-                onClick={() => this.setState({ showRequestAccessModal: true })}
-              >
-                <FontAwesomeIcon icon={faShieldAlt} aria-hidden={true} /> Request Access
-              </div>
             </li>
           </aside>
         )}

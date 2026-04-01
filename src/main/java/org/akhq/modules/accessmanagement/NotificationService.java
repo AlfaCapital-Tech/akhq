@@ -33,44 +33,35 @@ public class NotificationService {
                 String.join(", ", ownerEmails)
         );
 
-        send(message, ownerEmails);
+        log.info("ACCESS-MANAGEMENT: {}", message);
     }
 
     public void notifyApproved(AccessRequestEntity request) {
         String message = String.format(
-                "Access approved: your '%s' access to topic '%s' was approved by '%s'",
-                request.getRole(), request.getTopicName(), request.getResolvedBy()
+                "Access approved: user '%s' got '%s' access to topic '%s', approved by '%s'",
+                request.getUsername(), request.getRole(), request.getTopicName(), request.getResolvedBy()
         );
 
-        send(message, List.of());
+        log.info("ACCESS-MANAGEMENT: {}", message);
     }
 
     public void notifyRejected(AccessRequestEntity request) {
         String message = String.format(
-                "Access rejected: your '%s' access to topic '%s' was rejected by '%s'. Reason: %s",
-                request.getRole(), request.getTopicName(), request.getResolvedBy(),
+                "Access rejected: user '%s' request '%s' to topic '%s' rejected by '%s'. Reason: %s",
+                request.getUsername(), request.getRole(), request.getTopicName(), request.getResolvedBy(),
                 request.getRejectReason() != null ? request.getRejectReason() : "-"
         );
 
-        send(message, List.of());
+        log.info("ACCESS-MANAGEMENT: {}", message);
     }
 
     public void notifyRevoked(TopicAccessEntity access, String revokedBy) {
         String message = String.format(
-                "Access revoked: your '%s' access to topic '%s' was revoked by '%s'",
-                access.getRole(), access.getTopicName(), revokedBy
+                "Access revoked: user '%s' lost '%s' access to topic '%s', revoked by '%s'",
+                access.getUsername(), access.getRole(), access.getTopicName(), revokedBy
         );
 
-        send(message, List.of());
-    }
-
-    private void send(String message, List<String> recipients) {
-        if (Boolean.TRUE.equals(properties.getNotifications().getEnabled())) {
-            // TODO: send email via Micronaut Email (SMTP) when notifications.enabled=true
-            log.info("EMAIL [to: {}]: {}", String.join(", ", recipients), message);
-        } else {
-            log.info("ACCESS-MANAGEMENT: {}", message);
-        }
+        log.info("ACCESS-MANAGEMENT: {}", message);
     }
 
     private List<String> findOwnerEmails(String topicName) {

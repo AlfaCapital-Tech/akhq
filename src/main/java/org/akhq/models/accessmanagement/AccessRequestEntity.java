@@ -15,6 +15,10 @@ import java.util.UUID;
 @Table(name = "access_request")
 public class AccessRequestEntity {
 
+    public static final String STATUS_PENDING = "PENDING";
+    public static final String STATUS_APPROVED = "APPROVED";
+    public static final String STATUS_REJECTED = "REJECTED";
+
     @Id
     @Column(columnDefinition = "uuid")
     private UUID id;

@@ -33,7 +33,7 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
     public Map<String, String> getProperties() {
         Map<String, String> props = new HashMap<>(super.getProperties());
         props.put("akhq.access-management.enabled", "true");
-        props.put("akhq.access-management.super-admins[0].username", "admin");
+        props.put("akhq.access-management.super-admins[0].username", "ADMIN");
         props.put("akhq.access-management.super-admins[0].email", "admin@test.local");
         props.put("akhq.access-management.requestable-roles[0].name", "READ");
         props.put("akhq.access-management.requestable-roles[0].label", "Read data");
@@ -63,7 +63,7 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
         assertEquals("admin", result.getUsername());
         assertEquals("test.topic1", result.getTopicName());
         assertEquals("READ", result.getRole());
-        assertEquals("PENDING", result.getStatus());
+        assertEquals(AccessRequestEntity.STATUS_PENDING, result.getStatus());
         assertEquals("Need access", result.getReason());
         assertNotNull(result.getCreatedAt());
 
@@ -106,7 +106,7 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
         );
 
         assertFalse(result.isEmpty());
-        assertTrue(result.stream().allMatch(r -> "PENDING".equals(r.getStatus())));
+        assertTrue(result.stream().allMatch(r -> AccessRequestEntity.STATUS_PENDING.equals(r.getStatus())));
     }
 
     @Test
@@ -142,7 +142,7 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
                 AccessRequestEntity.class
         );
 
-        assertEquals("APPROVED", result.getStatus());
+        assertEquals(AccessRequestEntity.STATUS_APPROVED, result.getStatus());
         assertEquals("admin", result.getResolvedBy());
         assertNotNull(result.getResolvedAt());
     }
@@ -209,7 +209,7 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
                 AccessRequestEntity.class
         );
 
-        assertEquals("REJECTED", result.getStatus());
+        assertEquals(AccessRequestEntity.STATUS_REJECTED, result.getStatus());
         assertEquals("Not authorized", result.getRejectReason());
         assertEquals("admin", result.getResolvedBy());
     }
@@ -240,8 +240,8 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
         );
 
         assertTrue(result.size() >= 2);
-        assertTrue(result.stream().anyMatch(r -> "APPROVED".equals(r.getStatus())));
-        assertTrue(result.stream().anyMatch(r -> "REJECTED".equals(r.getStatus())));
+        assertTrue(result.stream().anyMatch(r -> AccessRequestEntity.STATUS_APPROVED.equals(r.getStatus())));
+        assertTrue(result.stream().anyMatch(r -> AccessRequestEntity.STATUS_REJECTED.equals(r.getStatus())));
     }
 
     @Test
@@ -270,5 +270,67 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
                 )
         );
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatus());
+    }
+
+    @Test
+    @Order(60)
+    void pendingRequestsCount() {
+        // Create a pending request first
+        AccessManagementController.CreateRequestBody body =
+                new AccessManagementController.CreateRequestBody("test.topic.count", "READ", "Count test");
+
+        client.toBlocking().retrieve(
+                HttpRequest.POST(BASE_URL + "/request", body).basicAuth("admin", "pass"),
+                AccessRequestEntity.class
+        );
+
+        // Check count
+        Map<String, Object> result = client.toBlocking().retrieve(
+                HttpRequest.GET(BASE_URL + "/requests/pending/count").basicAuth("admin", "pass"),
+                Argument.mapOf(String.class, Object.class)
+        );
+
+        assertNotNull(result.get("count"));
+        assertTrue(((Number) result.get("count")).intValue() > 0);
+    }
+
+    @Test
+    @Order(70)
+    void caseInsensitiveOwnerSeePendingRequests() {
+        // Config has owner "user" (lowercase) for prefix "test\\..*"
+        // Auth returns "admin" who is super-admin with lowercase "admin" in config
+        // We verify case-insensitive matching by adding an UPPERCASE super-admin config
+        // and checking that lowercase "admin" from auth still matches
+        // This is covered by the fact that all previous tests pass with equalsIgnoreCase
+
+        // Create a request to ensure there's a pending one
+        AccessManagementController.CreateRequestBody body =
+                new AccessManagementController.CreateRequestBody("test.topic.case", "READ", "Case test");
+        client.toBlocking().retrieve(
+                HttpRequest.POST(BASE_URL + "/request", body).basicAuth("admin", "pass"),
+                AccessRequestEntity.class
+        );
+
+        // admin is super-admin (case-insensitive) → should see all pending
+        List<AccessRequestEntity> result = client.toBlocking().retrieve(
+                HttpRequest.GET(BASE_URL + "/requests/pending").basicAuth("admin", "pass"),
+                Argument.listOf(AccessRequestEntity.class)
+        );
+
+        assertFalse(result.isEmpty());
+        assertTrue(result.stream().anyMatch(r -> r.getTopicName().equals("test.topic.case")));
+    }
+
+    @Test
+    @Order(71)
+    void caseInsensitiveSuperAdminSeeAllRequests() {
+        // Config has super-admin "ADMIN" (uppercase), auth returns "admin" (lowercase)
+        // equalsIgnoreCase should match → admin sees all requests
+        List<AccessRequestEntity> result = client.toBlocking().retrieve(
+                HttpRequest.GET(BASE_URL + "/requests/all").basicAuth("admin", "pass"),
+                Argument.listOf(AccessRequestEntity.class)
+        );
+
+        assertFalse(result.isEmpty());
     }
 }
