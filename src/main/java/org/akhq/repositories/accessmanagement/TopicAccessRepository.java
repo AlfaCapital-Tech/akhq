@@ -16,4 +16,6 @@ public interface TopicAccessRepository extends JpaRepository<TopicAccessEntity, 
     List<TopicAccessEntity> findByTopicName(String topicName);
 
     Optional<TopicAccessEntity> findByUsernameAndTopicNameAndRole(String username, String topicName, String role);
+
+    Optional<TopicAccessEntity> findByUsernameAndPrefixAndRole(String username, String prefix, String role);
 }

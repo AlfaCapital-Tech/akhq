@@ -5,6 +5,9 @@ import ConfirmModal from '../../components/Modal/ConfirmModal';
 import Root from '../../components/Root';
 import { withRouter } from '../../utils/withRouter';
 import { toast } from 'react-toastify';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faLayerGroup } from '@fortawesome/free-solid-svg-icons';
+import RequestPrefixModal from './RequestPrefixModal/RequestPrefixModal';
 import {
   uriAccessManagementMyRequests,
   uriAccessManagementPendingRequests,
@@ -33,7 +36,8 @@ class AccessManagement extends Root {
     showRevokeModal: false,
     rejectRequestId: null,
     revokeAccessId: null,
-    rejectReason: ''
+    rejectReason: '',
+    showPrefixModal: false
   };
 
   componentDidMount() {
@@ -159,6 +163,15 @@ class AccessManagement extends Root {
     return this.state.selectedTab === tab ? 'nav-link active' : 'nav-link';
   };
 
+  // --- Helpers ---
+
+  renderTarget(item) {
+    if (item.prefix) {
+      return <><span className="badge bg-primary me-1">Prefix</span>{item.prefix}</>;
+    }
+    return item.topicName || '-';
+  }
+
   // --- My Requests section ---
 
   renderMyRequests() {
@@ -167,7 +180,7 @@ class AccessManagement extends Root {
       <Table
         loading={myRequestsLoading}
         columns={[
-          { id: 'topicName', accessor: 'topicName', colName: 'Topic', sortable: true },
+          { id: 'target', accessor: 'topicName', colName: 'Topic / Prefix', sortable: true, cell: item => this.renderTarget(item) },
           { id: 'role', accessor: 'role', colName: 'Role', sortable: true },
           {
             id: 'status',
@@ -210,7 +223,7 @@ class AccessManagement extends Root {
         loading={managementLoading}
         columns={[
           { id: 'username', accessor: 'username', colName: 'User', sortable: true },
-          { id: 'topicName', accessor: 'topicName', colName: 'Topic', sortable: true },
+          { id: 'target', accessor: 'topicName', colName: 'Topic / Prefix', sortable: true, cell: item => this.renderTarget(item) },
           { id: 'role', accessor: 'role', colName: 'Role', sortable: true },
           { id: 'reason', accessor: 'reason', colName: 'Reason', cell: item => item.reason || '-' },
           {
@@ -254,7 +267,7 @@ class AccessManagement extends Root {
         loading={managementLoading}
         columns={[
           { id: 'username', accessor: 'username', colName: 'User', sortable: true },
-          { id: 'topicName', accessor: 'topicName', colName: 'Topic', sortable: true },
+          { id: 'target', accessor: 'topicName', colName: 'Topic / Prefix', sortable: true, cell: item => this.renderTarget(item) },
           { id: 'role', accessor: 'role', colName: 'Role', sortable: true },
           {
             id: 'status',
@@ -289,7 +302,7 @@ class AccessManagement extends Root {
         loading={managementLoading}
         columns={[
           { id: 'username', accessor: 'username', colName: 'User', sortable: true },
-          { id: 'topicName', accessor: 'topicName', colName: 'Topic', sortable: true },
+          { id: 'target', accessor: 'topicName', colName: 'Topic / Prefix', sortable: true, cell: item => this.renderTarget(item) },
           { id: 'role', accessor: 'role', colName: 'Role', sortable: true },
           { id: 'grantedBy', accessor: 'grantedBy', colName: 'Granted By' },
           {
@@ -458,11 +471,27 @@ class AccessManagement extends Root {
   render() {
     return (
       <div>
-        <Header title="Access Management" />
+        <Header title="Access Management">
+          <button
+            className="btn btn-outline-primary btn-sm"
+            onClick={() => this.setState({ showPrefixModal: true })}
+          >
+            <FontAwesomeIcon icon={faLayerGroup} aria-hidden={true} /> Request Prefix Access
+          </button>
+        </Header>
         <h4>My Requests</h4>
         {this.renderMyRequests()}
         {this.renderManagementSection()}
         {this.renderModals()}
+        <RequestPrefixModal
+          show={this.state.showPrefixModal}
+          onClose={() => this.setState({ showPrefixModal: false })}
+          clusterId={this.state.clusterId}
+          onSuccess={() => {
+            this.loadMyRequests();
+            this.loadManagementData();
+          }}
+        />
       </div>
     );
   }

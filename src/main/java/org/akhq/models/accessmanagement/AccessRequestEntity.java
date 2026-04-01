@@ -26,8 +26,10 @@ public class AccessRequestEntity {
     @Column(nullable = false)
     private String username;
 
-    @Column(name = "topic_name", nullable = false)
+    @Column(name = "topic_name")
     private String topicName;
+
+    private String prefix;
 
     @Column(nullable = false)
     private String role;

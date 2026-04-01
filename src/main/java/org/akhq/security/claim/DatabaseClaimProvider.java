@@ -45,13 +45,21 @@ public class DatabaseClaimProvider implements ClaimProvider {
         for (TopicAccessEntity access : accesses) {
             String akhqRole = resolveAkhqRole(access.getRole());
             if (akhqRole == null) {
-                log.warn("No akhq-role mapping for role '{}', skipping access for user '{}' on topic '{}'",
-                        access.getRole(), access.getUsername(), access.getTopicName());
+                String target = access.getPrefix() != null ? access.getPrefix() : access.getTopicName();
+                log.warn("No akhq-role mapping for role '{}', skipping access for user '{}' on '{}'",
+                        access.getRole(), access.getUsername(), target);
                 continue;
             }
 
-            String groupKey = "db-access-" + access.getUsername() + "-" + access.getTopicName() + "-" + access.getRole();
-            String topicPattern = Pattern.quote(access.getTopicName());
+            String topicPattern;
+            String groupKey;
+            if (access.getPrefix() != null) {
+                topicPattern = access.getPrefix();
+                groupKey = "db-access-" + access.getUsername() + "-prefix-" + access.getPrefix() + "-" + access.getRole();
+            } else {
+                topicPattern = Pattern.quote(access.getTopicName());
+                groupKey = "db-access-" + access.getUsername() + "-" + access.getTopicName() + "-" + access.getRole();
+            }
 
             Group group = new Group();
             group.setRole(akhqRole);

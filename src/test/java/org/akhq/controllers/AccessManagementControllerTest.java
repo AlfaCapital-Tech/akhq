@@ -52,7 +52,7 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
     @Order(1)
     void createRequest() {
         AccessManagementController.CreateRequestBody body =
-                new AccessManagementController.CreateRequestBody("test.topic1", "READ", "Need access");
+                new AccessManagementController.CreateRequestBody("test.topic1", null, "READ", "Need access");
 
         AccessRequestEntity result = client.toBlocking().retrieve(
                 HttpRequest.POST(BASE_URL + "/request", body).basicAuth("admin", "pass"),
@@ -74,7 +74,7 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
     @Order(2)
     void duplicateRequestReturnsConflict() {
         AccessManagementController.CreateRequestBody body =
-                new AccessManagementController.CreateRequestBody("test.topic1", "READ", "Duplicate");
+                new AccessManagementController.CreateRequestBody("test.topic1", null, "READ", "Duplicate");
 
         HttpClientResponseException ex = assertThrows(HttpClientResponseException.class, () ->
                 client.toBlocking().retrieve(
@@ -192,7 +192,7 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
     @Order(20)
     void createAndRejectRequest() {
         AccessManagementController.CreateRequestBody body =
-                new AccessManagementController.CreateRequestBody("test.topic2", "WRITE", "Want to write");
+                new AccessManagementController.CreateRequestBody("test.topic2", null, "WRITE", "Want to write");
 
         AccessRequestEntity created = client.toBlocking().retrieve(
                 HttpRequest.POST(BASE_URL + "/request", body).basicAuth("admin", "pass"),
@@ -248,7 +248,7 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
     @Order(50)
     void invalidRoleReturnsBadRequest() {
         AccessManagementController.CreateRequestBody body =
-                new AccessManagementController.CreateRequestBody("test.topic3", "INVALID", "Bad role");
+                new AccessManagementController.CreateRequestBody("test.topic3", null, "INVALID", "Bad role");
 
         HttpClientResponseException ex = assertThrows(HttpClientResponseException.class, () ->
                 client.toBlocking().retrieve(
@@ -277,7 +277,7 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
     void pendingRequestsCount() {
         // Create a pending request first
         AccessManagementController.CreateRequestBody body =
-                new AccessManagementController.CreateRequestBody("test.topic.count", "READ", "Count test");
+                new AccessManagementController.CreateRequestBody("test.topic.count", null, "READ", "Count test");
 
         client.toBlocking().retrieve(
                 HttpRequest.POST(BASE_URL + "/request", body).basicAuth("admin", "pass"),
@@ -305,7 +305,7 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
 
         // Create a request to ensure there's a pending one
         AccessManagementController.CreateRequestBody body =
-                new AccessManagementController.CreateRequestBody("test.topic.case", "READ", "Case test");
+                new AccessManagementController.CreateRequestBody("test.topic.case", null, "READ", "Case test");
         client.toBlocking().retrieve(
                 HttpRequest.POST(BASE_URL + "/request", body).basicAuth("admin", "pass"),
                 AccessRequestEntity.class
@@ -332,5 +332,78 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
         );
 
         assertFalse(result.isEmpty());
+    }
+
+    // --- Prefix access tests ---
+
+    private static UUID prefixRequestId;
+
+    @Test
+    @Order(80)
+    void availablePrefixes() {
+        List<Map<String, Object>> result = client.toBlocking().retrieve(
+                HttpRequest.GET(BASE_URL + "/prefixes").basicAuth("admin", "pass"),
+                Argument.listOf(Argument.mapOf(String.class, Object.class))
+        );
+
+        assertFalse(result.isEmpty());
+        assertTrue(result.stream().anyMatch(p -> "test\\..*".equals(p.get("prefix"))));
+    }
+
+    @Test
+    @Order(81)
+    void createPrefixRequest() {
+        AccessManagementController.CreateRequestBody body =
+                new AccessManagementController.CreateRequestBody(null, "test\\..*", "READ", "Need prefix access");
+
+        AccessRequestEntity result = client.toBlocking().retrieve(
+                HttpRequest.POST(BASE_URL + "/request", body).basicAuth("admin", "pass"),
+                AccessRequestEntity.class
+        );
+
+        assertNotNull(result.getId());
+        assertNull(result.getTopicName());
+        assertEquals("test\\..*", result.getPrefix());
+        assertEquals(AccessRequestEntity.STATUS_PENDING, result.getStatus());
+
+        prefixRequestId = result.getId();
+    }
+
+    @Test
+    @Order(82)
+    void duplicatePrefixRequestReturnsConflict() {
+        AccessManagementController.CreateRequestBody body =
+                new AccessManagementController.CreateRequestBody(null, "test\\..*", "READ", "Duplicate prefix");
+
+        HttpClientResponseException ex = assertThrows(HttpClientResponseException.class, () ->
+                client.toBlocking().retrieve(
+                        HttpRequest.POST(BASE_URL + "/request", body).basicAuth("admin", "pass"),
+                        AccessRequestEntity.class
+                )
+        );
+        assertEquals(HttpStatus.CONFLICT, ex.getStatus());
+    }
+
+    @Test
+    @Order(83)
+    void approvePrefixRequest() {
+        AccessRequestEntity result = client.toBlocking().retrieve(
+                HttpRequest.PUT(BASE_URL + "/requests/" + prefixRequestId + "/approve", "")
+                        .basicAuth("admin", "pass"),
+                AccessRequestEntity.class
+        );
+
+        assertEquals(AccessRequestEntity.STATUS_APPROVED, result.getStatus());
+    }
+
+    @Test
+    @Order(84)
+    void prefixAccessVisible() {
+        List<TopicAccessEntity> result = client.toBlocking().retrieve(
+                HttpRequest.GET(BASE_URL + "/accesses").basicAuth("admin", "pass"),
+                Argument.listOf(TopicAccessEntity.class)
+        );
+
+        assertTrue(result.stream().anyMatch(a -> "test\\..*".equals(a.getPrefix())));
     }
 }

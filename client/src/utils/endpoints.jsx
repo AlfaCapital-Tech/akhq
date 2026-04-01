@@ -377,6 +377,9 @@ export const uriAccessManagementRevokeAccess = (clusterId, accessId) =>
 export const uriAccessManagementPendingCount = clusterId =>
   `${apiUrl}/${clusterId}/access-management/requests/pending/count`;
 
+export const uriAccessManagementPrefixes = clusterId =>
+  `${apiUrl}/${clusterId}/access-management/prefixes`;
+
 export const uriAccessManagementTopicOwners = (clusterId, topicName) =>
   `${apiUrl}/${clusterId}/access-management/topic/${topicName}/owners`;
 

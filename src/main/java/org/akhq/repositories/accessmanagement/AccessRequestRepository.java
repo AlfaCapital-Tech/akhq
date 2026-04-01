@@ -15,4 +15,6 @@ public interface AccessRequestRepository extends JpaRepository<AccessRequestEnti
     List<AccessRequestEntity> findByStatus(String status);
 
     List<AccessRequestEntity> findByUsernameAndTopicNameAndStatus(String username, String topicName, String status);
+
+    List<AccessRequestEntity> findByUsernameAndPrefixAndStatus(String username, String prefix, String status);
 }

@@ -52,6 +52,23 @@ public class AccessManagementController {
 
     // --- User endpoints ---
 
+    @Get("/prefixes")
+    @Operation(tags = {"Access Management"}, summary = "Get available prefixes for access requests")
+    public HttpResponse<?> availablePrefixes(String cluster) {
+        if (!isEnabled()) {
+            return notFoundResponse("Access management is disabled");
+        }
+        List<PrefixInfo> prefixes = properties.getPrefixOwners().stream()
+                .map(po -> new PrefixInfo(
+                        po.getPrefix(),
+                        po.getOwners().stream()
+                                .map(o -> new OwnerInfo(o.getUsername(), o.getEmail()))
+                                .collect(Collectors.toList())
+                ))
+                .collect(Collectors.toList());
+        return HttpResponse.ok(prefixes);
+    }
+
     @Post("/request")
     @Operation(tags = {"Access Management"}, summary = "Create access request")
     public HttpResponse<?> createRequest(String cluster, @Body CreateRequestBody body) {
@@ -60,11 +77,25 @@ public class AccessManagementController {
         }
         String username = getCurrentUsername();
 
-        List<AccessRequestEntity> existing = accessRequestRepository
-                .findByUsernameAndTopicNameAndStatus(username, body.getTopicName(), AccessRequestEntity.STATUS_PENDING);
+        boolean isPrefix = body.getPrefix() != null && !body.getPrefix().isEmpty();
+        boolean isTopic = body.getTopicName() != null && !body.getTopicName().isEmpty();
+
+        if (!isPrefix && !isTopic) {
+            return HttpResponse.badRequest(new JsonError("Either topicName or prefix must be provided"));
+        }
+
+        // Check for duplicate pending request
+        List<AccessRequestEntity> existing;
+        if (isPrefix) {
+            existing = accessRequestRepository
+                    .findByUsernameAndPrefixAndStatus(username, body.getPrefix(), AccessRequestEntity.STATUS_PENDING);
+        } else {
+            existing = accessRequestRepository
+                    .findByUsernameAndTopicNameAndStatus(username, body.getTopicName(), AccessRequestEntity.STATUS_PENDING);
+        }
         if (!existing.isEmpty()) {
             return HttpResponse.status(HttpStatus.CONFLICT)
-                    .body(new JsonError("Pending request already exists for this topic"));
+                    .body(new JsonError("Pending request already exists"));
         }
 
         String roleError = validateRole(body.getRole());
@@ -74,10 +105,15 @@ public class AccessManagementController {
 
         AccessRequestEntity entity = new AccessRequestEntity();
         entity.setUsername(username);
-        entity.setTopicName(body.getTopicName());
         entity.setRole(body.getRole());
         entity.setStatus(AccessRequestEntity.STATUS_PENDING);
         entity.setReason(body.getReason());
+
+        if (isPrefix) {
+            entity.setPrefix(body.getPrefix());
+        } else {
+            entity.setTopicName(body.getTopicName());
+        }
 
         AccessRequestEntity saved = accessRequestRepository.save(entity);
         notificationService.notifyNewRequest(saved);
@@ -111,7 +147,7 @@ public class AccessManagementController {
         }
         String username = getCurrentUsername();
         List<TopicAccessEntity> accesses = topicAccessRepository.findByUsername(username).stream()
-                .filter(a -> a.getTopicName().equals(topicName))
+                .filter(a -> topicName.equals(a.getTopicName()))
                 .collect(Collectors.toList());
         return HttpResponse.ok(accesses);
     }
@@ -166,9 +202,10 @@ public class AccessManagementController {
         }
         AccessRequestEntity request = optRequest.get();
 
-        if (!isOwnerOfTopic(username, request.getTopicName())) {
+        String requestTarget = request.getPrefix() != null ? request.getPrefix() : request.getTopicName();
+        if (!isOwnerOfTarget(username, request)) {
             return HttpResponse.status(HttpStatus.FORBIDDEN)
-                    .body(new JsonError("You are not an owner of topic: " + request.getTopicName()));
+                    .body(new JsonError("You are not an owner of: " + requestTarget));
         }
 
         if (!AccessRequestEntity.STATUS_PENDING.equals(request.getStatus())) {
@@ -183,12 +220,19 @@ public class AccessManagementController {
         TopicAccessEntity access = new TopicAccessEntity();
         access.setUsername(request.getUsername());
         access.setTopicName(request.getTopicName());
+        access.setPrefix(request.getPrefix());
         access.setRole(request.getRole());
         access.setGrantedBy(username);
         access.setRequestId(request.getId());
 
-        Optional<TopicAccessEntity> existingAccess = topicAccessRepository
-                .findByUsernameAndTopicNameAndRole(request.getUsername(), request.getTopicName(), request.getRole());
+        Optional<TopicAccessEntity> existingAccess;
+        if (request.getPrefix() != null) {
+            existingAccess = topicAccessRepository
+                    .findByUsernameAndPrefixAndRole(request.getUsername(), request.getPrefix(), request.getRole());
+        } else {
+            existingAccess = topicAccessRepository
+                    .findByUsernameAndTopicNameAndRole(request.getUsername(), request.getTopicName(), request.getRole());
+        }
         if (existingAccess.isEmpty()) {
             topicAccessRepository.save(access);
         }
@@ -211,9 +255,10 @@ public class AccessManagementController {
         }
         AccessRequestEntity request = optRequest.get();
 
-        if (!isOwnerOfTopic(username, request.getTopicName())) {
+        if (!isOwnerOfTarget(username, request)) {
+            String target = request.getPrefix() != null ? request.getPrefix() : request.getTopicName();
             return HttpResponse.status(HttpStatus.FORBIDDEN)
-                    .body(new JsonError("You are not an owner of topic: " + request.getTopicName()));
+                    .body(new JsonError("You are not an owner of: " + target));
         }
 
         if (!AccessRequestEntity.STATUS_PENDING.equals(request.getStatus())) {
@@ -255,9 +300,10 @@ public class AccessManagementController {
         }
         TopicAccessEntity access = optAccess.get();
 
-        if (!isOwnerOfTopic(username, access.getTopicName())) {
+        String target = access.getPrefix() != null ? access.getPrefix() : access.getTopicName();
+        if (!isOwnerOfTarget(username, access.getTopicName(), access.getPrefix())) {
             return HttpResponse.status(HttpStatus.FORBIDDEN)
-                    .body(new JsonError("You are not an owner of topic: " + access.getTopicName()));
+                    .body(new JsonError("You are not an owner of: " + target));
         }
 
         topicAccessRepository.delete(access);
@@ -310,12 +356,34 @@ public class AccessManagementController {
                 .collect(Collectors.toList());
     }
 
-    private boolean isOwnerOfTopic(String username, String topicName) {
+    private boolean isOwnerOfTarget(String username, AccessRequestEntity request) {
+        return isOwnerOfTarget(username, request.getTopicName(), request.getPrefix());
+    }
+
+    private boolean isOwnerOfTarget(String username, String topicName, String prefix) {
         if (isSuperAdmin(username)) {
             return true;
         }
-        return getOwnedPrefixes(username).stream()
-                .anyMatch(prefix -> Pattern.matches(prefix, topicName));
+        List<String> ownedPrefixes = getOwnedPrefixes(username);
+        if (prefix != null) {
+            return ownedPrefixes.contains(prefix);
+        }
+        if (topicName != null) {
+            return ownedPrefixes.stream()
+                    .anyMatch(p -> Pattern.matches(p, topicName));
+        }
+        return false;
+    }
+
+    private boolean matchesOwnership(String topicName, String prefix, List<String> ownedPrefixes) {
+        if (prefix != null) {
+            return ownedPrefixes.contains(prefix);
+        }
+        if (topicName != null) {
+            return ownedPrefixes.stream()
+                    .anyMatch(p -> Pattern.matches(p, topicName));
+        }
+        return false;
     }
 
     private List<AccessRequestEntity> filterByOwnership(List<AccessRequestEntity> requests, String username) {
@@ -327,8 +395,7 @@ public class AccessManagementController {
             return List.of();
         }
         return requests.stream()
-                .filter(r -> prefixes.stream()
-                        .anyMatch(prefix -> Pattern.matches(prefix, r.getTopicName())))
+                .filter(r -> matchesOwnership(r.getTopicName(), r.getPrefix(), prefixes))
                 .collect(Collectors.toList());
     }
 
@@ -341,8 +408,7 @@ public class AccessManagementController {
             return List.of();
         }
         return accesses.stream()
-                .filter(a -> prefixes.stream()
-                        .anyMatch(prefix -> Pattern.matches(prefix, a.getTopicName())))
+                .filter(a -> matchesOwnership(a.getTopicName(), a.getPrefix(), prefixes))
                 .collect(Collectors.toList());
     }
 
@@ -365,6 +431,7 @@ public class AccessManagementController {
     @AllArgsConstructor
     public static class CreateRequestBody {
         private String topicName;
+        private String prefix;
         private String role;
         private String reason;
     }
@@ -388,5 +455,12 @@ public class AccessManagementController {
     public static class OwnerInfo {
         private String username;
         private String email;
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public static class PrefixInfo {
+        private String prefix;
+        private List<OwnerInfo> owners;
     }
 }

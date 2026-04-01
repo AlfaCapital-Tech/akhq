@@ -7,16 +7,16 @@ akhq:
     prefix-owners:
       - prefix: "eis\\..*"
         owners:
-          - username: admin
-            email: admin@example.com
+          - username: dima
+            email: dima@example.com
       - prefix: "edo\\..*"
         owners:
-          - username: admin
-            email: admin@example.com
+          - username: tolya
+            email: tolya@example.com
       - prefix: "lk\\..*"
         owners:
-          - username: admin
-            email: admin@example.com
+          - username: vanya
+            email: vanya@example.com
     requestable-roles:
       - name: READ
         label: "Read data"
@@ -55,6 +55,18 @@ akhq:
     basic-auth:
       - username: petrov
         password: c07d9e69d90a576c8a6690b35cc0912f48677cea2f560cf737058524744aff68
+        groups:
+          - browser
+      - username: dima
+        password: f0af5e3d912197ce331298e0f73f7f24d4f5eff958cce7f822f4d638405872f6
+        groups:
+          - browser
+      - username: tolya
+        password: 00e05acbdb422a4dea63430a616e8069f6cf1b44f8242d8ce70cd61a75b93695
+        groups:
+          - browser
+      - username: vanya
+        password: cab985d747d5ac52d9d2f94f9ec0ccfee7ea72a56ecbd9abaa6be4ebb358c50a
         groups:
           - browser
       - username: admin
