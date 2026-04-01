@@ -26,8 +26,7 @@ import ConsumerGroupOffsetDelete from '../containers/ConsumerGroup/ConsumerGroup
 import AclDetails from '../containers/Acl/AclDetail';
 import Login from '../containers/Login';
 import Settings from '../containers/Settings/Settings';
-import MyRequests from '../containers/AccessManagement/MyRequests';
-import Management from '../containers/AccessManagement/Management';
+import AccessManagement from '../containers/AccessManagement/AccessManagement';
 import { organizeRoles } from './converters';
 import { uriAuths, uriClusters, uriCurrentUser } from './endpoints';
 import Root from '../components/Root';
@@ -315,14 +314,7 @@ class AkhqRoutes extends Root {
                 <Route
                   exact
                   path="/ui/:clusterId/access-management"
-                  element={<MyRequests />}
-                />
-              )}
-              {auths.accessManagementEnabled && (
-                <Route
-                  exact
-                  path="/ui/:clusterId/access-management/manage"
-                  element={<Management />}
+                  element={<AccessManagement />}
                 />
               )}
               <Route exact path="/ui/:clusterId/settings" element={<Settings />} />

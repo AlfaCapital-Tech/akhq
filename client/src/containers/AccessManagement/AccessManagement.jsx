@@ -1,26 +1,34 @@
 import React from 'react';
-import Header from '../../Header';
-import Table from '../../../components/Table';
-import ConfirmModal from '../../../components/Modal/ConfirmModal';
-import Root from '../../../components/Root';
-import { withRouter } from '../../../utils/withRouter';
+import Header from '../Header';
+import Table from '../../components/Table';
+import ConfirmModal from '../../components/Modal/ConfirmModal';
+import Root from '../../components/Root';
+import { withRouter } from '../../utils/withRouter';
 import { toast } from 'react-toastify';
 import {
+  uriAccessManagementMyRequests,
   uriAccessManagementPendingRequests,
   uriAccessManagementAllRequests,
   uriAccessManagementAccesses,
   uriAccessManagementApprove,
   uriAccessManagementReject,
   uriAccessManagementRevokeAccess
-} from '../../../utils/endpoints';
-class Management extends Root {
+} from '../../utils/endpoints';
+
+class AccessManagement extends Root {
   state = {
     clusterId: '',
+    // My Requests
+    myRequests: [],
+    myRequestsLoading: true,
+    // Management (owner/admin)
+    isOwner: false,
+    managementLoading: true,
     selectedTab: 'pending',
     pendingRequests: [],
     allRequests: [],
     accesses: [],
-    loading: true,
+    // Modals
     showRejectModal: false,
     showRevokeModal: false,
     rejectRequestId: null,
@@ -31,28 +39,45 @@ class Management extends Root {
   componentDidMount() {
     const { clusterId } = this.props.params;
     this.setState({ clusterId }, () => {
-      this.loadData();
+      this.loadMyRequests();
+      this.loadManagementData();
     });
   }
 
-  async loadData() {
+  async loadMyRequests() {
     const { clusterId } = this.state;
-    this.setState({ loading: true });
+    try {
+      const response = await this.getApi(uriAccessManagementMyRequests(clusterId));
+      this.setState({ myRequests: response.data || [], myRequestsLoading: false });
+    } catch (err) {
+      console.error('Error loading my requests:', err);
+      this.setState({ myRequestsLoading: false });
+    }
+  }
+
+  async loadManagementData() {
+    const { clusterId } = this.state;
+    this.setState({ managementLoading: true });
     try {
       const [pending, all, accesses] = await Promise.all([
         this.getApi(uriAccessManagementPendingRequests(clusterId)),
         this.getApi(uriAccessManagementAllRequests(clusterId)),
         this.getApi(uriAccessManagementAccesses(clusterId))
       ]);
+      const pendingData = pending.data || [];
+      const allData = all.data || [];
+      const accessesData = accesses.data || [];
+      const isOwner = pendingData.length > 0 || allData.length > 0 || accessesData.length > 0;
       this.setState({
-        pendingRequests: pending.data || [],
-        allRequests: all.data || [],
-        accesses: accesses.data || [],
-        loading: false
+        pendingRequests: pendingData,
+        allRequests: allData,
+        accesses: accessesData,
+        isOwner,
+        managementLoading: false
       });
     } catch (err) {
-      console.error('Error:', err);
-      this.setState({ loading: false });
+      console.error('Error loading management data:', err);
+      this.setState({ managementLoading: false });
     }
   }
 
@@ -61,7 +86,8 @@ class Management extends Root {
     try {
       await this.putApi(uriAccessManagementApprove(clusterId, requestId));
       toast.success('Request approved');
-      this.loadData();
+      this.loadMyRequests();
+      this.loadManagementData();
     } catch (err) {
       toast.error('Failed to approve request');
     }
@@ -83,7 +109,8 @@ class Management extends Root {
       });
       toast.success('Request rejected');
       this.closeRejectModal();
-      this.loadData();
+      this.loadMyRequests();
+      this.loadManagementData();
     } catch (err) {
       toast.error('Failed to reject request');
     }
@@ -103,7 +130,8 @@ class Management extends Root {
       await this.removeApi(uriAccessManagementRevokeAccess(clusterId, revokeAccessId));
       toast.success('Access revoked');
       this.closeRevokeModal();
-      this.loadData();
+      this.loadMyRequests();
+      this.loadManagementData();
     } catch (err) {
       toast.error('Failed to revoke access');
     }
@@ -131,11 +159,55 @@ class Management extends Root {
     return this.state.selectedTab === tab ? 'nav-link active' : 'nav-link';
   };
 
-  renderPendingTab() {
-    const { pendingRequests, loading } = this.state;
+  // --- My Requests section ---
+
+  renderMyRequests() {
+    const { myRequests, myRequestsLoading } = this.state;
     return (
       <Table
-        loading={loading}
+        loading={myRequestsLoading}
+        columns={[
+          { id: 'topicName', accessor: 'topicName', colName: 'Topic', sortable: true },
+          { id: 'role', accessor: 'role', colName: 'Role', sortable: true },
+          {
+            id: 'status',
+            accessor: 'status',
+            colName: 'Status',
+            cell: item => this.renderStatus(item.status)
+          },
+          { id: 'reason', accessor: 'reason', colName: 'Reason', cell: item => item.reason || '-' },
+          {
+            id: 'rejectReason',
+            accessor: 'rejectReason',
+            colName: 'Reject Reason',
+            cell: item => item.rejectReason || '-'
+          },
+          {
+            id: 'resolvedBy',
+            accessor: 'resolvedBy',
+            colName: 'Resolved By',
+            cell: item => item.resolvedBy || '-'
+          },
+          {
+            id: 'createdAt',
+            accessor: 'createdAt',
+            colName: 'Created',
+            cell: item => this.formatDate(item.createdAt)
+          }
+        ]}
+        data={myRequests}
+        noContent="No access requests found"
+      />
+    );
+  }
+
+  // --- Management tabs ---
+
+  renderPendingTab() {
+    const { pendingRequests, managementLoading } = this.state;
+    return (
+      <Table
+        loading={managementLoading}
         columns={[
           { id: 'username', accessor: 'username', colName: 'User', sortable: true },
           { id: 'topicName', accessor: 'topicName', colName: 'Topic', sortable: true },
@@ -176,17 +248,27 @@ class Management extends Root {
   }
 
   renderHistoryTab() {
-    const { allRequests, loading } = this.state;
+    const { allRequests, managementLoading } = this.state;
     return (
       <Table
-        loading={loading}
+        loading={managementLoading}
         columns={[
           { id: 'username', accessor: 'username', colName: 'User', sortable: true },
           { id: 'topicName', accessor: 'topicName', colName: 'Topic', sortable: true },
           { id: 'role', accessor: 'role', colName: 'Role', sortable: true },
-          { id: 'status', accessor: 'status', colName: 'Status', cell: item => this.renderStatus(item.status) },
+          {
+            id: 'status',
+            accessor: 'status',
+            colName: 'Status',
+            cell: item => this.renderStatus(item.status)
+          },
           { id: 'reason', accessor: 'reason', colName: 'Reason', cell: item => item.reason || '-' },
-          { id: 'resolvedBy', accessor: 'resolvedBy', colName: 'Resolved By', cell: item => item.resolvedBy || '-' },
+          {
+            id: 'resolvedBy',
+            accessor: 'resolvedBy',
+            colName: 'Resolved By',
+            cell: item => item.resolvedBy || '-'
+          },
           {
             id: 'createdAt',
             accessor: 'createdAt',
@@ -201,10 +283,10 @@ class Management extends Root {
   }
 
   renderAccessesTab() {
-    const { accesses, loading } = this.state;
+    const { accesses, managementLoading } = this.state;
     return (
       <Table
-        loading={loading}
+        loading={managementLoading}
         columns={[
           { id: 'username', accessor: 'username', colName: 'User', sortable: true },
           { id: 'topicName', accessor: 'topicName', colName: 'Topic', sortable: true },
@@ -249,12 +331,16 @@ class Management extends Root {
     }
   }
 
-  render() {
-    const { selectedTab, showRejectModal, showRevokeModal, rejectReason, pendingRequests } = this.state;
+  renderManagementSection() {
+    const { isOwner, managementLoading, pendingRequests } = this.state;
+
+    if (managementLoading || !isOwner) {
+      return null;
+    }
 
     return (
-      <div>
-        <Header title="Access Management" />
+      <div className="mt-4">
+        <h4>Manage Accesses</h4>
         <div className="tabs-container" style={{ marginBottom: '4%' }}>
           <ul className="nav nav-tabs" role="tablist">
             <li className="nav-item">
@@ -264,7 +350,9 @@ class Management extends Root {
               >
                 Pending
                 {pendingRequests.length > 0 && (
-                  <span className="badge bg-warning text-dark ms-2">{pendingRequests.length}</span>
+                  <span className="badge bg-warning text-dark ms-2">
+                    {pendingRequests.length}
+                  </span>
                 )}
               </button>
             </li>
@@ -292,7 +380,15 @@ class Management extends Root {
             </div>
           </div>
         </div>
+      </div>
+    );
+  }
 
+  renderModals() {
+    const { showRejectModal, showRevokeModal, rejectReason } = this.state;
+
+    return (
+      <>
         {/* Reject Modal */}
         <div className={showRejectModal ? 'modal display-block' : 'modal display-none'}>
           <div
@@ -355,9 +451,21 @@ class Management extends Root {
           handleConfirm={() => this.handleRevoke()}
           message="Are you sure you want to revoke this access?"
         />
+      </>
+    );
+  }
+
+  render() {
+    return (
+      <div>
+        <Header title="Access Management" />
+        <h4>My Requests</h4>
+        {this.renderMyRequests()}
+        {this.renderManagementSection()}
+        {this.renderModals()}
       </div>
     );
   }
 }
 
-export default withRouter(Management);
+export default withRouter(AccessManagement);
