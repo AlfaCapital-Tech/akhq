@@ -1,5 +1,7 @@
 package org.akhq.modules.accessmanagement;
 
+import io.micronaut.email.Email;
+import io.micronaut.email.EmailSender;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +13,8 @@ import org.akhq.models.accessmanagement.TopicAccessEntity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -19,6 +23,9 @@ public class NotificationService {
 
     @Inject
     private AccessManagementProperties properties;
+
+    @Inject
+    private Optional<EmailSender> emailSender;
 
     public void notifyNewRequest(AccessRequestEntity request) {
         String target = request.getPrefix() != null ? request.getPrefix() : request.getTopicName();
@@ -30,45 +37,92 @@ public class NotificationService {
         }
 
         String targetType = request.getPrefix() != null ? "prefix" : "topic";
-        String message = String.format(
+        String logMessage = String.format(
                 "New access request: user '%s' requests '%s' access to %s '%s'. Reason: %s. Notify: %s",
                 request.getUsername(), request.getRole(), targetType, target,
                 request.getReason() != null ? request.getReason() : "-",
                 String.join(", ", ownerEmails)
         );
+        log.info("ACCESS-MANAGEMENT: {}", logMessage);
 
-        log.info("ACCESS-MANAGEMENT: {}", message);
+        String subject = subjectPrefix() + " New access request from " + request.getUsername();
+        String reason = request.getReason() != null ? request.getReason() : "-";
+        String textBody = String.format(
+                "User '%s' requests '%s' access to %s '%s'.\n\nReason: %s\n\n%s",
+                request.getUsername(), request.getRole(), targetType, target, reason,
+                accessManagementUrl()
+        );
+        String htmlBody = String.format(
+                "<p>User <b>%s</b> requests <b>%s</b> access to %s <b>%s</b>.</p>"
+                + "<p>Reason: %s</p>"
+                + "%s",
+                request.getUsername(), request.getRole(), targetType, target, reason,
+                accessManagementLink()
+        );
+        sendEmail(ownerEmails, subject, htmlBody, textBody);
     }
 
     public void notifyApproved(AccessRequestEntity request) {
         String target = request.getPrefix() != null ? request.getPrefix() : request.getTopicName();
-        String message = String.format(
-                "Access approved: user '%s' got '%s' access to '%s', approved by '%s'",
-                request.getUsername(), request.getRole(), target, request.getResolvedBy()
-        );
-
-        log.info("ACCESS-MANAGEMENT: {}", message);
+        log.info("ACCESS-MANAGEMENT: Access approved: user '{}' got '{}' access to '{}', approved by '{}'",
+                request.getUsername(), request.getRole(), target, request.getResolvedBy());
     }
 
     public void notifyRejected(AccessRequestEntity request) {
         String target = request.getPrefix() != null ? request.getPrefix() : request.getTopicName();
-        String message = String.format(
-                "Access rejected: user '%s' request '%s' to '%s' rejected by '%s'. Reason: %s",
+        log.info("ACCESS-MANAGEMENT: Access rejected: user '{}' request '{}' to '{}' rejected by '{}'. Reason: {}",
                 request.getUsername(), request.getRole(), target, request.getResolvedBy(),
-                request.getRejectReason() != null ? request.getRejectReason() : "-"
-        );
-
-        log.info("ACCESS-MANAGEMENT: {}", message);
+                request.getRejectReason() != null ? request.getRejectReason() : "-");
     }
 
     public void notifyRevoked(TopicAccessEntity access, String revokedBy) {
         String target = access.getPrefix() != null ? access.getPrefix() : access.getTopicName();
-        String message = String.format(
-                "Access revoked: user '%s' lost '%s' access to '%s', revoked by '%s'",
-                access.getUsername(), access.getRole(), target, revokedBy
-        );
+        log.info("ACCESS-MANAGEMENT: Access revoked: user '{}' lost '{}' access to '{}', revoked by '{}'",
+                access.getUsername(), access.getRole(), target, revokedBy);
+    }
 
-        log.info("ACCESS-MANAGEMENT: {}", message);
+    private void sendEmail(List<String> recipients, String subject, String htmlBody, String textBody) {
+        if (!Boolean.TRUE.equals(properties.getNotifications().getEnabled()) || recipients.isEmpty()) {
+            return;
+        }
+        if (emailSender.isEmpty()) {
+            log.warn("ACCESS-MANAGEMENT: notifications enabled but EmailSender bean not found, check SMTP config");
+            return;
+        }
+        for (String recipient : recipients) {
+            try {
+                emailSender.get().send(Email.builder()
+                        .to(recipient)
+                        .subject(subject)
+                        .body(htmlBody, textBody)
+                );
+                log.debug("ACCESS-MANAGEMENT: email sent to {}", recipient);
+            } catch (Exception e) {
+                log.error("ACCESS-MANAGEMENT: failed to send email to {}: {}", recipient, e.getMessage(), e);
+            }
+        }
+    }
+
+    private String subjectPrefix() {
+        String prefix = properties.getNotifications().getSubjectPrefix();
+        return prefix != null ? prefix : "[AKHQ]";
+    }
+
+    private String accessManagementUrl() {
+        String baseUrl = properties.getNotifications().getBaseUrl();
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            return "";
+        }
+        return "Review: " + baseUrl + "/ui";
+    }
+
+    private String accessManagementLink() {
+        String baseUrl = properties.getNotifications().getBaseUrl();
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            return "";
+        }
+        String url = baseUrl + "/ui";
+        return "<p><a href=\"" + url + "\">Review in AKHQ</a></p>";
     }
 
     private List<String> findOwnerEmails(String topicName) {
@@ -103,7 +157,7 @@ public class NotificationService {
     private List<String> getSuperAdminEmails() {
         return properties.getSuperAdmins().stream()
                 .map(AccessManagementProperties.SuperAdmin::getEmail)
-                .filter(e -> e != null)
+                .filter(Objects::nonNull)
                 .toList();
     }
 }

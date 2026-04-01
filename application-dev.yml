@@ -25,7 +25,9 @@ akhq:
         label: "Read and write data"
         akhq-role: topic-data-write
     notifications:
-      enabled: false
+      enabled: true
+      subject-prefix: "[AKHQ]"
+      base-url: "http://localhost:8080"
 
   security:
     default-group: browser
@@ -107,6 +109,17 @@ datasources:
 micronaut:
   security:
     enabled: true
+  email:
+    from:
+      email: "akhq@example.com"
+      name: "AKHQ Access Management"
+
+javamail:
+  properties:
+    mail:
+      smtp:
+        host: mailpit
+        port: 1025
 
 flyway:
   datasources:

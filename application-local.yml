@@ -31,6 +31,7 @@ akhq:
         akhq-role: topic-data-write
     notifications:
       enabled: false
+      base-url: "http://localhost:8080"
 
 jpa:
   default:
@@ -48,6 +49,19 @@ datasources:
     username: akhq
     password: akhq
     driver-class-name: org.postgresql.Driver
+
+micronaut:
+  email:
+    from:
+      email: "akhq@example.com"
+      name: "AKHQ Access Management"
+
+javamail:
+  properties:
+    mail:
+      smtp:
+        host: localhost
+        port: 1025
 
 flyway:
   datasources:

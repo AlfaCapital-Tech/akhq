@@ -46,8 +46,10 @@ public class AccessManagementProperties {
     }
 
     @Data
+    @ConfigurationProperties("notifications")
     public static class NotificationProperties {
         Boolean enabled = false;
-        String from;
+        String subjectPrefix = "[AKHQ]";
+        String baseUrl;
     }
 }

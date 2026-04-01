@@ -5,6 +5,13 @@ volumes:
     driver: local
 
 services:
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   postgres:
     image: postgres:16
     restart: unless-stopped
