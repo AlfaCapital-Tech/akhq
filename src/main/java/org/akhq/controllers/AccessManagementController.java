@@ -30,7 +30,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-@Secured(SecurityRule.IS_ANONYMOUS)
+@Secured(SecurityRule.IS_AUTHENTICATED)
 @Controller("/api/{cluster}/access-management")
 @ExecuteOn(TaskExecutors.IO)
 public class AccessManagementController {
@@ -322,13 +322,10 @@ public class AccessManagementController {
     }
 
     private String getCurrentUsername() {
-        if (applicationContext.containsBean(SecurityService.class)) {
-            return applicationContext.getBean(SecurityService.class)
-                    .getAuthentication()
-                    .map(auth -> auth.getName())
-                    .orElse("anonymous");
-        }
-        return "anonymous";
+        return applicationContext.getBean(SecurityService.class)
+                .getAuthentication()
+                .map(auth -> auth.getName())
+                .orElseThrow(() -> new IllegalStateException("Authentication required but not present"));
     }
 
     private String validateRole(String role) {

@@ -11,6 +11,8 @@ import org.akhq.configs.accessmanagement.AccessManagementProperties.PrefixOwner;
 import org.akhq.models.accessmanagement.AccessRequestEntity;
 import org.akhq.models.accessmanagement.TopicAccessEntity;
 
+import com.google.common.html.HtmlEscapers;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -47,6 +49,7 @@ public class NotificationService {
 
         String subject = subjectPrefix() + " New access request from " + request.getUsername();
         String reason = request.getReason() != null ? request.getReason() : "-";
+        String reasonHtml = HtmlEscapers.htmlEscaper().escape(reason);
         String textBody = String.format(
                 "User '%s' requests '%s' access to %s '%s'.\n\nReason: %s\n\n%s",
                 request.getUsername(), request.getRole(), targetType, target, reason,
@@ -56,7 +59,7 @@ public class NotificationService {
                 "<p>User <b>%s</b> requests <b>%s</b> access to %s <b>%s</b>.</p>"
                 + "<p>Reason: %s</p>"
                 + "%s",
-                request.getUsername(), request.getRole(), targetType, target, reason,
+                request.getUsername(), request.getRole(), targetType, target, reasonHtml,
                 accessManagementLink()
         );
         sendEmail(ownerEmails, subject, htmlBody, textBody);
