@@ -49,17 +49,18 @@ public class NotificationService {
 
         String subject = subjectPrefix() + " New access request from " + request.getUsername();
         String reason = request.getReason() != null ? request.getReason() : "-";
-        String reasonHtml = HtmlEscapers.htmlEscaper().escape(reason);
         String textBody = String.format(
                 "User '%s' requests '%s' access to %s '%s'.\n\nReason: %s\n\n%s",
                 request.getUsername(), request.getRole(), targetType, target, reason,
                 accessManagementUrl()
         );
+        var esc = HtmlEscapers.htmlEscaper();
         String htmlBody = String.format(
                 "<p>User <b>%s</b> requests <b>%s</b> access to %s <b>%s</b>.</p>"
                 + "<p>Reason: %s</p>"
                 + "%s",
-                request.getUsername(), request.getRole(), targetType, target, reasonHtml,
+                esc.escape(request.getUsername()), esc.escape(request.getRole()),
+                esc.escape(targetType), esc.escape(target), esc.escape(reason),
                 accessManagementLink()
         );
         sendEmail(ownerEmails, subject, htmlBody, textBody);
