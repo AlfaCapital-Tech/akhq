@@ -243,7 +243,7 @@ class Topic extends Root {
         <Header title={`Topic: ${topicId}`}>
           {auths.accessManagementEnabled && (
             <button
-              className="btn btn-outline-primary btn-sm me-2"
+              className="btn btn-danger btn-sm me-2"
               onClick={() => this.setState({ showRequestAccessModal: true })}
             >
               <FontAwesomeIcon icon={faShieldAlt} aria-hidden={true} /> Request Access

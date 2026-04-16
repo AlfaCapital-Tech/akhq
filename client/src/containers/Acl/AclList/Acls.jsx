@@ -6,6 +6,7 @@ import { uriAclsList } from '../../../utils/endpoints';
 import SearchBar from '../../../components/SearchBar';
 import Root from '../../../components/Root';
 import { withRouter } from '../../../utils/withRouter';
+import { encodeBase64Utf8 } from '../../../utils/functions';
 
 class Acls extends Root {
   state = {
@@ -43,7 +44,7 @@ class Acls extends Root {
 
   handleData(acls) {
     let tableAcls = acls.map(acl => {
-      acl.principalEncoded = btoa(acl.principal);
+      acl.principalEncoded = encodeBase64Utf8(acl.principal);
       return {
         id: acl,
         user: acl.principal || ''

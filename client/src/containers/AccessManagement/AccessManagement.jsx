@@ -473,7 +473,7 @@ class AccessManagement extends Root {
       <div>
         <Header title="Access Management">
           <button
-            className="btn btn-outline-primary btn-sm"
+            className="btn btn-danger btn-sm"
             onClick={() => this.setState({ showPrefixModal: true })}
           >
             <FontAwesomeIcon icon={faLayerGroup} aria-hidden={true} /> Request Prefix Access

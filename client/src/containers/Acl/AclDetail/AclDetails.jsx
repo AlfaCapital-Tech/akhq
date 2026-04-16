@@ -4,7 +4,7 @@ import AclGroups from './AclGroups/AclGroups';
 import AclTopics from './AclTopics/AclTopics';
 import AclClusters from './AclClusters/AclClusters';
 import AclTransactionalIds from './AclTransactionalIds/AclTransactionalIds';
-import { getSelectedTab } from '../../../utils/functions';
+import { getSelectedTab, decodeBase64Utf8 } from '../../../utils/functions';
 import { Link } from 'react-router-dom';
 import Root from '../../../components/Root';
 import { withRouter } from '../../../utils/withRouter';
@@ -67,7 +67,7 @@ class AclDetails extends Root {
 
   render() {
     const { principalEncoded, clusterId } = this.state;
-    const principal = atob(principalEncoded);
+    const principal = decodeBase64Utf8(principalEncoded);
     return (
       <div>
         <Header title={`Acl: ${principal}`} />
