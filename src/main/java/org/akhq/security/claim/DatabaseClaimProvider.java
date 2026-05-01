@@ -22,6 +22,8 @@ import java.util.regex.Pattern;
 @Requires(property = "akhq.access-management.enabled", value = "true")
 public class DatabaseClaimProvider implements ClaimProvider {
 
+    public static final String DYNAMIC_GROUP_PREFIX = "db-access-";
+
     @Inject
     private LocalSecurityClaimProvider localSecurityClaimProvider;
 
@@ -35,19 +37,29 @@ public class DatabaseClaimProvider implements ClaimProvider {
     public ClaimResponse generateClaim(ClaimRequest request) {
         ClaimResponse localResponse = localSecurityClaimProvider.generateClaim(request);
 
-        List<TopicAccessEntity> accesses = topicAccessRepository.findByUsername(request.getUsername());
-        if (accesses.isEmpty()) {
+        Map<String, List<Group>> dynamic = resolveDynamicGroups(request.getUsername());
+        if (dynamic.isEmpty()) {
             return localResponse;
         }
 
         Map<String, List<Group>> groups = new HashMap<>(localResponse.getGroups());
+        groups.putAll(dynamic);
+        return ClaimResponse.builder().groups(groups).build();
+    }
+
+    public Map<String, List<Group>> resolveDynamicGroups(String username) {
+        Map<String, List<Group>> groups = new HashMap<>();
+        List<TopicAccessEntity> accesses = topicAccessRepository.findByUsername(username);
+        if (accesses.isEmpty()) {
+            return groups;
+        }
 
         for (TopicAccessEntity access : accesses) {
             String akhqRole = resolveAkhqRole(access.getRole());
             if (akhqRole == null) {
                 String target = access.getPrefix() != null ? access.getPrefix() : access.getTopicName();
                 log.warn("No akhq-role mapping for role '{}', skipping access for user '{}' on '{}'",
-                        access.getRole(), access.getUsername(), target);
+                        access.getRole(), username, target);
                 continue;
             }
 
@@ -55,10 +67,10 @@ public class DatabaseClaimProvider implements ClaimProvider {
             String groupKey;
             if (access.getPrefix() != null) {
                 topicPattern = access.getPrefix();
-                groupKey = "db-access-" + access.getUsername() + "-prefix-" + access.getPrefix() + "-" + access.getRole();
+                groupKey = DYNAMIC_GROUP_PREFIX + username + "-prefix-" + access.getPrefix() + "-" + access.getRole();
             } else {
                 topicPattern = Pattern.quote(access.getTopicName());
-                groupKey = "db-access-" + access.getUsername() + "-" + access.getTopicName() + "-" + access.getRole();
+                groupKey = DYNAMIC_GROUP_PREFIX + username + "-" + access.getTopicName() + "-" + access.getRole();
             }
 
             Group group = new Group();
@@ -68,8 +80,7 @@ public class DatabaseClaimProvider implements ClaimProvider {
 
             groups.put(groupKey, List.of(group));
         }
-
-        return ClaimResponse.builder().groups(groups).build();
+        return groups;
     }
 
     private String resolveAkhqRole(String requestRole) {

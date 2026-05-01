@@ -2,6 +2,7 @@ package org.akhq.security.rule;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.impl.compression.GzipCompressionAlgorithm;
+import io.micronaut.core.annotation.Nullable;
 import io.micronaut.http.BasicHttpAttributes;
 import io.micronaut.http.HttpRequest;
 import io.micronaut.security.authentication.Authentication;
@@ -22,6 +23,7 @@ import org.akhq.models.security.ClaimProviderType;
 import org.akhq.models.security.ClaimRequest;
 import org.akhq.models.security.ClaimResponse;
 import org.akhq.security.annotation.AKHQSecured;
+import org.akhq.security.claim.DatabaseClaimProvider;
 import org.reactivestreams.Publisher;
 
 import java.util.*;
@@ -48,6 +50,9 @@ public class AKHQSecurityRule extends AbstractSecurityRule<HttpRequest<?>> {
     private SecurityProperties securityProperties;
     @Inject
     private ClaimProvider claimProvider;
+    @Inject
+    @Nullable
+    private DatabaseClaimProvider databaseClaimProvider;
 
     @Override
     public Publisher<SecurityRuleResult> check(HttpRequest<?> request, Authentication authentication) {
@@ -82,8 +87,14 @@ public class AKHQSecurityRule extends AbstractSecurityRule<HttpRequest<?>> {
         List<Group> userGroups = new ArrayList<>();
 
         if (authentication != null) {
-            // Add user groups from the user token
-            userGroups = unrollGroups(authentication, claimProvider).values().stream()
+            // Defensive copy: unrollGroups' contract doesn't guarantee mutability of the returned map.
+            Map<String, List<Group>> resolvedGroups = new HashMap<>(unrollGroups(authentication, claimProvider));
+            // Always re-read dynamic db-access groups from DB so grant/revoke applies on next request without re-login.
+            if (databaseClaimProvider != null) {
+                resolvedGroups.keySet().removeIf(key -> key != null && key.startsWith(DatabaseClaimProvider.DYNAMIC_GROUP_PREFIX));
+                resolvedGroups.putAll(databaseClaimProvider.resolveDynamicGroups(authentication.getName()));
+            }
+            userGroups = resolvedGroups.values().stream()
                 .flatMap(Collection::stream)
                 .collect(Collectors.toList());
         }

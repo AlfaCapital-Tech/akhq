@@ -45,6 +45,9 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
         props.put("akhq.access-management.prefix-owners[0].owners[0].username", "user");
         props.put("akhq.access-management.prefix-owners[0].owners[0].email", "user@test.local");
         props.put("akhq.access-management.notifications.enabled", "false");
+        // EmailSender bean is built unconditionally; provide a stub host so DI graph initializes.
+        // Notifications are disabled above, so no mail is actually sent.
+        props.put("javamail.properties.mail.smtp.host", "localhost");
         return props;
     }
 
