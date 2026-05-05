@@ -62,3 +62,51 @@
 ### Поведение при ошибке БД
 
 Не обрабатываем. Если PostgreSQL недоступна — access-management и так не функционирует. Исключение из репозитория долетает до `ErrorController` → 500. Никаких try/catch и fallback'ов.
+
+## Доработка после ревью (фидбек от тестирования)
+
+При первом проходе фикс затрагивал только `AKHQSecurityRule.check()` — это решало вопрос allow/reject на endpoints с `@AKHQSecured`, но не на фильтрации списков. Фронт жаловался: revoke «работает» (юзер ловит 403 на data-эндпоинте), а grant — нет (новый топик не появляется в списке, прямой URL тоже отдаёт 403).
+
+### Воспроизведение
+
+С petrov, у которого статический pattern `users\..*`:
+
+1. revoke `eis.orders` через `DELETE FROM topic_access` — `GET /api/local/topic` всё ещё показывает `eis.orders` (баг косметики), но `GET /api/local/topic/eis.orders/data` → 403 (TASK-6 check работает).
+2. grant `orders.public` через `INSERT` — `GET /api/local/topic` НЕ показывает `orders.public`, прямой `GET /api/local/topic/orders.public` → 403.
+
+### Причина
+
+`AbstractController.getUserGroups()` (используется в `buildUserBasedResourceFilters` для фильтрации списков и в `checkIfClusterAndResourceAllowed` для page-level авторизации) собирал группы **только из JWT** через `AKHQSecurityRule.unrollGroups`. К БД не ходил.
+
+### Фикс
+
+Симметрично TASK-6 в `AbstractController.getUserGroups()`:
+- инжектится `@Inject @Nullable DatabaseClaimProvider databaseClaimProvider`;
+- из `unrollGroups` делается defensive copy, выкидываются ключи `db-access-*`, домерживаются свежие из `databaseClaimProvider.resolveDynamicGroups(username)`.
+
+После фикса grant и revoke применяются идентично и для list-эндпоинтов, и для прямого доступа — без релогина.
+
+### Рефакторинг: общий helper
+
+Чтобы избежать дублирования логики слияния (defensive copy + удаление stale `db-access-*` + putAll свежих) в двух местах, вынесли в статический метод `DatabaseClaimProvider.mergeDynamicGroups(baseGroups, databaseClaimProvider, username)`. Обе точки вызова — `AKHQSecurityRule.check()` и `AbstractController.getUserGroups()` — используют его. При изменении правил слияния правится одно место.
+
+### Воспроизведение бага в dev
+
+Чтобы баг наблюдался, у пользователя должен быть **статический** ограничивающий `patterns` в группе. Без `patterns` группа разрешает все топики и эффект grant не виден.
+
+Пример: добавить в `application-dev.yml` группе `browser`:
+
+```yaml
+groups:
+  browser:
+    - role: topic-browse
+      patterns: ["users\\..*"]   # YAML \\. → regex \. (литеральная точка)
+```
+
+После этого petrov видит только `users.*`, а grant на `orders.public` через INSERT в `topic_access` — наглядно тестируется (без фикса не появляется, с фиксом появляется на следующем запросе).
+
+### Изменённые файлы
+
+- `src/main/java/org/akhq/security/claim/DatabaseClaimProvider.java` — добавлен helper `mergeDynamicGroups`.
+- `src/main/java/org/akhq/security/rule/AKHQSecurityRule.java` — `check()` использует helper.
+- `src/main/java/org/akhq/controllers/AbstractController.java` — `getUserGroups()` инжектит `DatabaseClaimProvider` и использует helper.

@@ -3,6 +3,7 @@ package org.akhq.controllers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micronaut.context.ApplicationContext;
 import io.micronaut.context.annotation.Value;
+import io.micronaut.core.annotation.Nullable;
 import io.micronaut.core.util.StringUtils;
 import io.micronaut.security.authentication.Authentication;
 import io.micronaut.security.authentication.AuthorizationException;
@@ -12,6 +13,7 @@ import org.akhq.configs.security.Group;
 import org.akhq.configs.security.SecurityProperties;
 import org.akhq.models.security.ClaimProvider;
 import org.akhq.security.annotation.AKHQSecured;
+import org.akhq.security.claim.DatabaseClaimProvider;
 import org.akhq.security.rule.AKHQSecurityRule;
 
 import java.lang.reflect.Method;
@@ -33,6 +35,10 @@ abstract public class AbstractController {
 
     @Inject
     private ClaimProvider claimProvider;
+
+    @Inject
+    @Nullable
+    private DatabaseClaimProvider databaseClaimProvider;
 
     @Value("${micronaut.server.context-path:}")
     protected String basePath;
@@ -62,7 +68,9 @@ abstract public class AbstractController {
 
         // Add user groups
         authentication.ifPresent(value -> groups.addAll(
-            AKHQSecurityRule.unrollGroups(value, claimProvider).values().stream()
+            DatabaseClaimProvider.mergeDynamicGroups(
+                    AKHQSecurityRule.unrollGroups(value, claimProvider), databaseClaimProvider, value.getName())
+                .values().stream()
                 .flatMap(Collection::stream)
                 .map(gb -> new ObjectMapper().convertValue(gb, Group.class))
                 .toList())

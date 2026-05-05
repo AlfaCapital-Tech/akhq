@@ -47,6 +47,25 @@ public class DatabaseClaimProvider implements ClaimProvider {
         return ClaimResponse.builder().groups(groups).build();
     }
 
+    /**
+     * Merge dynamic db-access groups into a base groups map: drop any stale {@code db-access-*}
+     * entries, then add fresh ones from the DB. Both AKHQSecurityRule.check and
+     * AbstractController.getUserGroups must apply the same merge so allow/reject and
+     * list filtering stay consistent without re-login.
+     */
+    public static Map<String, List<Group>> mergeDynamicGroups(
+        Map<String, List<Group>> baseGroups,
+        DatabaseClaimProvider databaseClaimProvider,
+        String username
+    ) {
+        Map<String, List<Group>> merged = new HashMap<>(baseGroups);
+        if (databaseClaimProvider != null) {
+            merged.keySet().removeIf(key -> key != null && key.startsWith(DYNAMIC_GROUP_PREFIX));
+            merged.putAll(databaseClaimProvider.resolveDynamicGroups(username));
+        }
+        return merged;
+    }
+
     public Map<String, List<Group>> resolveDynamicGroups(String username) {
         Map<String, List<Group>> groups = new HashMap<>();
         List<TopicAccessEntity> accesses = topicAccessRepository.findByUsername(username);

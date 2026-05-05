@@ -87,14 +87,9 @@ public class AKHQSecurityRule extends AbstractSecurityRule<HttpRequest<?>> {
         List<Group> userGroups = new ArrayList<>();
 
         if (authentication != null) {
-            // Defensive copy: unrollGroups' contract doesn't guarantee mutability of the returned map.
-            Map<String, List<Group>> resolvedGroups = new HashMap<>(unrollGroups(authentication, claimProvider));
-            // Always re-read dynamic db-access groups from DB so grant/revoke applies on next request without re-login.
-            if (databaseClaimProvider != null) {
-                resolvedGroups.keySet().removeIf(key -> key != null && key.startsWith(DatabaseClaimProvider.DYNAMIC_GROUP_PREFIX));
-                resolvedGroups.putAll(databaseClaimProvider.resolveDynamicGroups(authentication.getName()));
-            }
-            userGroups = resolvedGroups.values().stream()
+            userGroups = DatabaseClaimProvider.mergeDynamicGroups(
+                    unrollGroups(authentication, claimProvider), databaseClaimProvider, authentication.getName())
+                .values().stream()
                 .flatMap(Collection::stream)
                 .collect(Collectors.toList());
         }
