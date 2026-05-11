@@ -22,7 +22,7 @@ const handleError = err => {
   };
 
   if (err.response && err.response.status < 500) {
-    if (err.response.status === 401 || err.response.status === 403) {
+    if (err.response.status === 401) {
       sessionStorage.setItem('returnTo', window.location.pathname + (window.location.search || ''));
       localStorage.setItem('toastMessage', error.message);
       location.href = '/ui/login';
