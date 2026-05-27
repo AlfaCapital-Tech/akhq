@@ -33,3 +33,11 @@ jobs:
         if: success() || failure()
         with:
           report_paths: '**/build/test-results/**/TEST-*.xml'
+
+      - name: Cleanup orphan processes & temp state
+        if: always()
+        run: |
+          pkill -9 -f 'org.akhq.KafkaTestCluster' || true
+          ./gradlew --stop || true
+          rm -f /tmp/akhq-cs.json || true
+          rm -rf /tmp/kafka-* /tmp/junit-* /tmp/akhq-* || true
