@@ -79,7 +79,7 @@ public class ErrorController extends AbstractController {
 
     @Error(global = true)
     public HttpResponse<?> error(HttpRequest<?> request, AuthorizationException e) throws URISyntaxException {
-        if (request.getUri().toString().startsWith("/api")) {
+        if (request.getUri().toString().startsWith(getBasePath()+"/api")) {
             if (e.isForbidden()) {
                 String resource = request.getAttribute(AKHQSecurityRule.REJECTED_RESOURCE, String.class).orElse(null);
                 String action = request.getAttribute(AKHQSecurityRule.REJECTED_ACTION, String.class).orElse(null);
