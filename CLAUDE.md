@@ -85,3 +85,4 @@ docker compose -f docker-compose-dev.yml up
 ## Текущие задачи
 
 - **TASK-1**: Система самообслуживания доступов к топикам (PostgreSQL, Flyway, Micronaut Data JPA). Backend готов, frontend в работе. См. `fork-docs/TASK-1/`
+- 
