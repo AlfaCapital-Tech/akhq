@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AKHQ: JSON-логи в stdout для сбора Vector -> OpenSearch.
+
+  Формат согласован с пайплайном namespace infra: обязательны поля
+  message (строка), logType (строка "tech") и @timestamp (ISO-8601 со смещением).
+
+  Требует зависимость net.logstash.logback:logstash-logback-encoder
+  в сборке приложения — встроенный в Logback JsonEncoder переименование
+  полей не поддерживает.
+
+  Подключение: JAVA_OPTS=-Dlogback.configurationFile=logback-json.xml
+-->
+<configuration debug="false">
+
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.out</target>
+        <immediateFlush>true</immediateFlush>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <!-- смещение в @timestamp как у остальных сервисов namespace -->
+            <timeZone>Europe/Moscow</timeZone>
+            <includeContext>false</includeContext>
+            <!-- статические поля: logType выбирает индекс в роутере Vector -->
+            <customFields>{"logType":"tech","app":"akhq"}</customFields>
+            <fieldNames>
+                <version>[ignore]</version>
+                <levelValue>[ignore]</levelValue>
+            </fieldNames>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="JSON" />
+    </root>
+
+    <logger name="org.apache" level="WARN" />
+    <logger name="io.micronaut" level="WARN"/>
+    <logger name="io.micronaut.context.DefaultApplicationContext" level="INFO" />
+    <logger name="io.micronaut.runtime.Micronaut" level="INFO" />
+</configuration>
