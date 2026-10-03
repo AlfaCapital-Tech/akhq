@@ -2,16 +2,16 @@
 
 ## 1. Merge
 
-- [ ] 1.1 На ветке `task-8-upstream-sync` выполнить `git merge origin/dev` (сообщение `TASK-8: влить upstream tchiotludo/akhq в release/ak-fork`)
-- [ ] 1.2 Конфликты `AbstractController.java`, `AKHQSecurityRule.java` — взять версию upstream целиком
-- [ ] 1.3 Конфликты `Acls.jsx`, `AclDetails.jsx` — взять версию upstream; вернуть `client/src/utils/functions.jsx` к версии upstream
+- [x] 1.1 На ветке `task-8-upstream-sync` выполнить `git merge origin/dev` (сообщение `TASK-8: влить upstream tchiotludo/akhq в release/ak-fork`)
+- [x] 1.2 Конфликты `AbstractController.java`, `AKHQSecurityRule.java` — взять версию upstream целиком
+- [x] 1.3 Конфликты `Acls.jsx`, `AclDetails.jsx` — взять версию upstream; вернуть `client/src/utils/functions.jsx` к версии upstream
 
 ## 2. Динамические группы через подмену UserGroupsResolver
 
-- [ ] 2.1 Добавить в `org.akhq.security.claim` класс форка `extends UserGroupsResolver` с `@Replaces(UserGroupsResolver.class)` и `@Requires(property = "akhq.access-management.enabled", value = "true")`: обычная аутентификация — `unrollGroups` → `mergeDynamicGroups` → плоский список `Group`; MCP OAuth — `super.resolve`
-- [ ] 2.2 Перенести `mergeDynamicGroups` из публичного API `DatabaseClaimProvider` в новый класс
-- [ ] 2.3 Проверить `git grep unrollGroups` и вызовы `ClaimProvider` вне `UserGroupsResolver`: новый код upstream не должен обходить подмену
-- [ ] 2.4 Обновить `DatabaseClaimProviderDynamicGroupsTest` под новую точку подключения; добавить тесты: выдача и отзыв без перелогина через новый класс, MCP-путь получает динамические группы, при `enabled: false` используется штатный `UserGroupsResolver`
+- [x] 2.1 Добавить в `org.akhq.security.claim` класс форка `extends UserGroupsResolver` с `@Replaces(UserGroupsResolver.class)` и `@Requires(property = "akhq.access-management.enabled", value = "true")`: обычная аутентификация — `unrollGroups` → `mergeDynamicGroups` → плоский список `Group`; MCP OAuth — `super.resolve`
+- [x] 2.2 Перенести `mergeDynamicGroups` из публичного API `DatabaseClaimProvider` в новый класс
+- [x] 2.3 Проверить `git grep unrollGroups` и вызовы `ClaimProvider` вне `UserGroupsResolver`: новый код upstream не должен обходить подмену
+- [x] 2.4 Обновить `DatabaseClaimProviderDynamicGroupsTest` под новую точку подключения; добавить тесты: выдача и отзыв без перелогина через новый класс, MCP-путь получает динамические группы, при `enabled: false` используется штатный `UserGroupsResolver`
 
 ## 3. Сборка на Micronaut 5
 
