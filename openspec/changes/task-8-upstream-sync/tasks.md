@@ -15,9 +15,9 @@
 
 ## 3. Сборка на Micronaut 5
 
-- [ ] 3.1 `JAVA_HOME=~/.jdks/corretto-25.0.3 ./gradlew compileJava compileTestJava -x installFrontend -x assembleFrontend`; исправить ошибки в коде форка (JPA-сущности, репозитории, Flyway, email)
+- [x] 3.1 `JAVA_HOME=~/.jdks/corretto-25.0.3 ./gradlew compileJava compileTestJava -x installFrontend -x assembleFrontend`; исправить ошибки в коде форка (JPA-сущности, репозитории, Flyway, email)
 - [ ] 3.2 Полный `./gradlew test` (нужен Docker для Testcontainers); исправить падения
-- [ ] 3.3 Фронтенд в `client/`: `npm ci`, `npm run lint`, `npx vitest run`, `npm run build`
+- [x] 3.3 Фронтенд в `client/`: `npm ci`, `npm run lint`, `npx vitest run`, `npm run build`
 
 ## 4. Ручная проверка (docker-compose-local)
 
@@ -29,9 +29,9 @@
 
 ## 5. Документация
 
-- [ ] 5.1 `CLAUDE.md`: Micronaut 5, сборка на JDK 25
-- [ ] 5.2 Скилл `.claude/skills/upstream-sync/SKILL.md`: upstream → `dev` → ветка `task-<N>-upstream-sync` от `release/ak-fork` → merge → правило конфликтов (берём upstream, форк подключается через свои классы) → тесты → ручная проверка → fast-forward `release/ak-fork`
-- [ ] 5.3 `openspec validate task-8-upstream-sync --strict`
+- [x] 5.1 `CLAUDE.md`: Micronaut 5, сборка на JDK 25
+- [x] 5.2 Скилл `.claude/skills/upstream-sync/SKILL.md`: upstream → `dev` → ветка `task-<N>-upstream-sync` от `release/ak-fork` → merge → правило конфликтов (берём upstream, форк подключается через свои классы) → тесты → ручная проверка → fast-forward `release/ak-fork`
+- [x] 5.3 `openspec validate task-8-upstream-sync --strict`
 
 ## 6. Доставка
 

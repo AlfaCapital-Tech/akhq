@@ -12,7 +12,9 @@
 # 1. Поднять инфраструктуру (Kafka, PostgreSQL, Schema Registry, Connect, ksqlDB)
 docker compose -f docker-compose-local.yml up -d
 
-# 2. Backend (Java 25, Micronaut 4.10.7, Gradle) — запуск на :8080
+# 2. Backend (Java 25, Micronaut 5, Gradle) — запуск на :8080
+# Gradle-плагин Micronaut 5 требует JDK 25, на системной Java 21 сборка не стартует
+export JAVA_HOME=~/.jdks/corretto-25.0.3
 MICRONAUT_CONFIG_FILES=application-local.yml ./gradlew run -x installFrontend -x assembleFrontend
 
 # 3. Frontend (React, Vite) — запуск на :4000 (или следующий свободный)
@@ -25,7 +27,7 @@ cd client && npm install && npm start
 docker compose -f docker-compose-local.yml down
 ```
 
-В IDEA: запускать `org.akhq.App` с VM option `-Dmicronaut.config.files=application-local.yml`.
+В IDEA: Gradle JVM и SDK проекта — JDK 25; запускать `org.akhq.App` с VM option `-Dmicronaut.config.files=application-local.yml`.
 
 ### Docker (всё-в-одном)
 
@@ -94,4 +96,4 @@ docker compose -f docker-compose-dev.yml up
 
 - `release/ak-fork` — основная ветка форка, из неё собирается релиз
 - `dev` — зеркало upstream `tchiotludo/akhq` плюс правки CI под форк
-- Upstream вливается только merge (без rebase): upstream → `dev` → `release/ak-fork`
+- Upstream вливается только merge (без rebase): upstream → `dev` → `release/ak-fork`, процедура — скилл `.claude/skills/upstream-sync/`
