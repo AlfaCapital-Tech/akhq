@@ -16,7 +16,7 @@
 ## 3. Сборка на Micronaut 5
 
 - [x] 3.1 `JAVA_HOME=~/.jdks/corretto-25.0.3 ./gradlew compileJava compileTestJava -x installFrontend -x assembleFrontend`; исправить ошибки в коде форка (JPA-сущности, репозитории, Flyway, email)
-- [ ] 3.2 Полный `./gradlew test` (нужен Docker для Testcontainers); исправить падения
+- [x] 3.2 Полный `./gradlew test` (нужен Docker для Testcontainers); исправить падения
 - [x] 3.3 Фронтенд в `client/`: `npm ci`, `npm run lint`, `npx vitest run`, `npm run build`
 
 ## 4. Ручная проверка (docker-compose-local)

@@ -51,6 +51,7 @@ export JAVA_HOME=~/.jdks/corretto-25.0.3   # Micronaut 5 не собираетс
 - `Unable to delete .../build/classes` или `AccessDeniedException` в `.gradle/` — файлы root после docker-compose-dev: `sudo rm -rf build/` (без sudo: `docker run --rm -v $PWD/build:/b -v $PWD/.gradle:/g alpine rm -rf /b/classes /b/tmp /g/<старая версия gradle>`).
 - Таймаут `packages.confluent.io` — один повтор с `-Dorg.gradle.internal.http.socketTimeout=120000 -Dorg.gradle.internal.http.connectionTimeout=120000`; не помогло — остановиться и сообщить пользователю.
 - Отчёты JUnit: `build/test-results/test/*.xml`.
+- Известные флейки upstream на общем тестовом кластере Kafka (`/tmp/akhq-cs.json`): `TopicRepositoryTest.createWithConfig` (`Error for Describe Topic Config`, оставляет топик и сбивает счётчики в `list*`), `Subject 'stream-map-value' not found` и `MissingSourceTopicException` (гонка старта Kafka Streams). Не гонять параллельно с фронтенд-тестами и вторым `./gradlew test`.
 
 Фронтенд:
 
