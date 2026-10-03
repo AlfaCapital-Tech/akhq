@@ -10,7 +10,6 @@ import io.micronaut.security.rules.SecuredAnnotationRule;
 import io.micronaut.security.rules.SecurityRuleResult;
 import io.micronaut.security.token.RolesFinder;
 import io.micronaut.web.router.MethodBasedRouteMatch;
-import io.reactivex.Flowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +21,9 @@ import org.akhq.models.security.ClaimProviderType;
 import org.akhq.models.security.ClaimRequest;
 import org.akhq.models.security.ClaimResponse;
 import org.akhq.security.annotation.AKHQSecured;
+import org.akhq.security.authentication.UserGroupsResolver;
 import org.reactivestreams.Publisher;
+import reactor.core.publisher.Mono;
 
 import java.util.*;
 import java.util.regex.Pattern;
@@ -48,27 +49,29 @@ public class AKHQSecurityRule extends AbstractSecurityRule<HttpRequest<?>> {
     private SecurityProperties securityProperties;
     @Inject
     private ClaimProvider claimProvider;
+    @Inject
+    private UserGroupsResolver userGroupsResolver;
 
     @Override
     public Publisher<SecurityRuleResult> check(HttpRequest<?> request, Authentication authentication) {
         var routeMatchInfo = BasicHttpAttributes.getRouteMatchInfo(request);
         if (routeMatchInfo.isEmpty() || !(routeMatchInfo.get() instanceof MethodBasedRouteMatch<?, ?> methodRoute)) {
-            return Flowable.just(SecurityRuleResult.UNKNOWN);
+            return Mono.just(SecurityRuleResult.UNKNOWN);
         }
 
         if (!methodRoute.hasAnnotation(AKHQSecured.class)) {
-            return Flowable.just(SecurityRuleResult.UNKNOWN);
+            return Mono.just(SecurityRuleResult.UNKNOWN);
         }
 
         Optional<Role.Resource> optionalResource = methodRoute.getValue(AKHQSecured.class, "resource", Role.Resource.class);
         Optional<Role.Action> optionalAction = methodRoute.getValue(AKHQSecured.class, "action", Role.Action.class);
         if (optionalResource.isEmpty() || optionalAction.isEmpty()) {
-            return Flowable.just(SecurityRuleResult.UNKNOWN);
+            return Mono.just(SecurityRuleResult.UNKNOWN);
         }
 
         if (!methodRoute.getVariableValues().containsKey("cluster")) {
             log.warn("Route matched AKHQSecured but no `cluster` provided");
-            return Flowable.just(SecurityRuleResult.REJECTED);
+            return Mono.just(SecurityRuleResult.REJECTED);
         }
         String cluster = methodRoute.getVariableValues().get("cluster").toString();
 
@@ -76,16 +79,13 @@ public class AKHQSecurityRule extends AbstractSecurityRule<HttpRequest<?>> {
         if (authentication == null && (securityProperties.getDefaultGroup() == null
             || securityProperties.getGroups().get(securityProperties.getDefaultGroup()) == null)) {
             log.warn("No authentication information provided");
-            return Flowable.just(SecurityRuleResult.REJECTED);
+            return Mono.just(SecurityRuleResult.REJECTED);
         }
 
         List<Group> userGroups = new ArrayList<>();
 
         if (authentication != null) {
-            // Add user groups from the user token
-            userGroups = unrollGroups(authentication, claimProvider).values().stream()
-                .flatMap(Collection::stream)
-                .collect(Collectors.toList());
+            userGroups = new ArrayList<>(userGroupsResolver.resolve(authentication));
         }
 
         // Add default group anyway
@@ -110,11 +110,11 @@ public class AKHQSecurityRule extends AbstractSecurityRule<HttpRequest<?>> {
                 && role.getActions().contains(optionalAction.get()));
 
         if (allowed)
-            return Flowable.just(SecurityRuleResult.ALLOWED);
+            return Mono.just(SecurityRuleResult.ALLOWED);
 
         request.setAttribute(REJECTED_RESOURCE, optionalResource.get().toString());
         request.setAttribute(REJECTED_ACTION, optionalAction.get().toString());
-        return Flowable.just(SecurityRuleResult.REJECTED);
+        return Mono.just(SecurityRuleResult.REJECTED);
     }
 
     public static Map<String, List<Group>> unrollGroups(Authentication authentication, ClaimProvider claimProvider) {
