@@ -1,0 +1,90 @@
+.akhq-mascot {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  max-width: 460px;
+}
+
+.akhq-mascot--floating {
+  position: fixed;
+  right: 16px;
+  bottom: 8px;
+  z-index: 1040;
+  animation: akhq-mascot-in 0.5s ease-out;
+}
+
+/* Never cover an open modal: fork modals are .modal.display-block, react-bootstrap ones set body.modal-open */
+body.modal-open .akhq-mascot--floating,
+body:has(.modal.display-block) .akhq-mascot--floating {
+  display: none;
+}
+
+.akhq-mascot__bubble {
+  position: relative;
+  margin-bottom: 72px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #fff;
+  color: #212529;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.akhq-mascot__bubble::after {
+  content: '';
+  position: absolute;
+  right: -10px;
+  bottom: 18px;
+  border: 10px solid transparent;
+  border-right: 0;
+  border-left-color: #fff;
+}
+
+.akhq-mascot__title {
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.akhq-mascot__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.akhq-mascot__image {
+  flex: none;
+  width: 130px;
+  height: 130px;
+  animation: akhq-mascot-sway 4s ease-in-out infinite;
+  transform-origin: bottom center;
+  user-select: none;
+}
+
+.akhq-mascot__progress {
+  margin-right: auto;
+  align-self: center;
+  color: #6c757d;
+  font-size: 0.8rem;
+}
+
+@keyframes akhq-mascot-in {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+}
+
+@keyframes akhq-mascot-sway {
+  50% {
+    transform: rotate(-3deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .akhq-mascot--floating,
+  .akhq-mascot__image {
+    animation: none;
+  }
+}

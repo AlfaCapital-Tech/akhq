@@ -8,6 +8,7 @@ import { toast } from 'react-toastify';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLayerGroup } from '@fortawesome/free-solid-svg-icons';
 import RequestPrefixModal from './RequestPrefixModal/RequestPrefixModal';
+import AccessTour from './Onboarding/AccessTour';
 import {
   uriAccessManagementMyRequests,
   uriAccessManagementPendingRequests,
@@ -358,6 +359,7 @@ class AccessManagement extends Root {
           <ul className="nav nav-tabs" role="tablist">
             <li className="nav-item">
               <button
+                data-tour="pending"
                 className={this.tabClassName('pending')}
                 onClick={() => this.setState({ selectedTab: 'pending' })}
               >
@@ -472,15 +474,22 @@ class AccessManagement extends Root {
     return (
       <div>
         <Header title="Access Management">
+          <AccessTour
+            clusterId={this.state.clusterId}
+            ready={!this.state.myRequestsLoading && !this.state.managementLoading}
+          />
           <button
             className="btn btn-danger btn-sm"
+            data-tour="prefix-request"
             onClick={() => this.setState({ showPrefixModal: true })}
           >
             <FontAwesomeIcon icon={faLayerGroup} aria-hidden={true} /> Request Prefix Access
           </button>
         </Header>
-        <h4>My Requests</h4>
-        {this.renderMyRequests()}
+        <div data-tour="my-requests">
+          <h4>My Requests</h4>
+          {this.renderMyRequests()}
+        </div>
         {this.renderManagementSection()}
         {this.renderModals()}
         <RequestPrefixModal

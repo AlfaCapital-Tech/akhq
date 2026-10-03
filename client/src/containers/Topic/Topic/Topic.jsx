@@ -17,6 +17,8 @@ import { withRouter } from '../../../utils/withRouter';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEraser, faLevelDown, faPlus, faShieldAlt } from '@fortawesome/free-solid-svg-icons';
 import RequestAccessModal from '../../AccessManagement/RequestAccessModal';
+import TopicDataAccess from '../../AccessManagement/Onboarding/TopicDataAccess';
+import { isAccessManagementEnabled } from '../../AccessManagement/Onboarding/onboardingState';
 
 class Topic extends Root {
   state = {
@@ -64,7 +66,9 @@ class Topic extends Root {
         topicId,
         registryType,
         selectedTab:
-          roles.TOPIC_DATA && roles.TOPIC_DATA.includes('READ') ? tabSelected : 'configs',
+          (roles.TOPIC_DATA && roles.TOPIC_DATA.includes('READ')) || isAccessManagementEnabled()
+            ? tabSelected
+            : 'configs',
         topicInternal: this.props.location.internal
       },
       () => {
@@ -207,12 +211,14 @@ class Topic extends Root {
     switch (selectedTab) {
       case 'data':
         return (
-          <TopicData
-            ref={this.topicData}
-            location={location}
-            registryType={this.state.registryType}
-            updateExportData={this._handleSelectCheckboxChange}
-          />
+          <TopicDataAccess clusterId={clusterId} topicId={topicId}>
+            <TopicData
+              ref={this.topicData}
+              location={location}
+              registryType={this.state.registryType}
+              updateExportData={this._handleSelectCheckboxChange}
+            />
+          </TopicDataAccess>
         );
       case 'partitions':
         return <TopicPartitions clusterId={clusterId} topic={topicId} />;
@@ -252,7 +258,7 @@ class Topic extends Root {
         </Header>
         <div className="tabs-container" style={{ marginBottom: '4%' }}>
           <ul className="nav nav-tabs" role="tablist">
-            {roles.TOPIC_DATA && roles.TOPIC_DATA.includes('READ') && (
+            {((roles.TOPIC_DATA && roles.TOPIC_DATA.includes('READ')) || auths.accessManagementEnabled) && (
               <li className="nav-item">
                 <Link
                   to={`/ui/${clusterId}/topic/${topicId}/data`}

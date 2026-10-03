@@ -27,6 +27,7 @@ import AclDetails from '../containers/Acl/AclDetail';
 import Login from '../containers/Login';
 import Settings from '../containers/Settings/Settings';
 import AccessManagement from '../containers/AccessManagement/AccessManagement';
+import OnboardingMascot from '../containers/AccessManagement/Onboarding/Mascot';
 import { organizeRoles } from './converters';
 import { uriAuths, uriClusters, uriCurrentUser } from './endpoints';
 import Root from '../components/Root';
@@ -324,6 +325,7 @@ class AkhqRoutes extends Root {
               <Route path="/ui" element={<Navigate to={this.checkAfterLoginAndHandleRedirect()} />} />
               <Route path="/ui/401" element={<Navigate to={this.handleRedirect()} />} />
             </Routes>
+            <OnboardingMascot clusterId={clusterId} />
           </Base>
         );
       } else if (sessionStorage.getItem('login') === 'false' && this.state.user !== 'default') {

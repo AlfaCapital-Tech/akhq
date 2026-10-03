@@ -465,6 +465,7 @@ class Sidebar extends Component {
                 {' '}
                 <Link
                   to={`/ui/${selectedCluster}/${constants.ACCESS_MANAGEMENT}`}
+                  data-tour="access-menu"
                   onClick={e => {
                     this.setState({ selectedTab: constants.ACCESS_MANAGEMENT });
                     e.preventDefault();

@@ -404,6 +404,11 @@ export const uriAccessManagementTopicOwners = (clusterId, topicName) =>
 export const uriAccessManagementMyAccess = (clusterId, topicName) =>
   `${apiUrl}/${clusterId}/access-management/topic/${topicName}/my-access`;
 
+export const uriAccessManagementMe = clusterId => `${apiUrl}/${clusterId}/access-management/me`;
+
+export const uriAccessManagementDataAccess = (clusterId, topicName) =>
+  `${apiUrl}/${clusterId}/access-management/topic/${topicName}/data-access`;
+
 export default {
   apiUrl,
   uriClusters,
