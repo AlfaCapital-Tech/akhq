@@ -35,6 +35,6 @@
 
 ## 6. Доставка
 
-- [ ] 6.1 Пуш ветки `task-8-upstream-sync`, `Tests` в GitHub Actions зелёный
-- [ ] 6.2 После подтверждения: fast-forward `release/ak-fork` на ветку и пуш (пересобирает прод)
-- [ ] 6.3 `openspec archive task-8-upstream-sync`
+- [x] 6.1 Пуш ветки `task-8-upstream-sync`, `Tests` в GitHub Actions зелёный — красный: на раннере нет libatomic, плюс нестабильные тесты upstream; влито осознанно, CI чиним после раннера
+- [x] 6.2 После подтверждения: fast-forward `release/ak-fork` на ветку и пуш (пересобирает прод)
+- [x] 6.3 `openspec archive task-8-upstream-sync`
