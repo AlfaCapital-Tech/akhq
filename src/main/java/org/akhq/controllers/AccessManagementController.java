@@ -7,6 +7,7 @@ import io.micronaut.http.annotation.*;
 import io.micronaut.http.hateoas.JsonError;
 import io.micronaut.scheduling.TaskExecutors;
 import io.micronaut.scheduling.annotation.ExecuteOn;
+import io.micronaut.security.authentication.Authentication;
 import io.micronaut.security.annotation.Secured;
 import io.micronaut.security.rules.SecurityRule;
 import io.micronaut.security.utils.SecurityService;
@@ -19,11 +20,15 @@ import lombok.NoArgsConstructor;
 import org.akhq.configs.accessmanagement.AccessManagementProperties;
 import org.akhq.configs.accessmanagement.AccessManagementProperties.Owner;
 import org.akhq.configs.accessmanagement.AccessManagementProperties.PrefixOwner;
+import org.akhq.configs.security.Group;
+import org.akhq.configs.security.Role;
+import org.akhq.configs.security.SecurityProperties;
 import org.akhq.models.accessmanagement.AccessRequestEntity;
 import org.akhq.models.accessmanagement.TopicAccessEntity;
 import org.akhq.modules.accessmanagement.NotificationService;
 import org.akhq.repositories.accessmanagement.AccessRequestRepository;
 import org.akhq.repositories.accessmanagement.TopicAccessRepository;
+import org.akhq.security.authentication.UserGroupsResolver;
 
 import java.time.Instant;
 import java.util.*;
@@ -49,6 +54,12 @@ public class AccessManagementController {
 
     @Inject
     private NotificationService notificationService;
+
+    @Inject
+    private SecurityProperties securityProperties;
+
+    @Inject
+    private UserGroupsResolver userGroupsResolver;
 
     // --- User endpoints ---
 
@@ -150,6 +161,25 @@ public class AccessManagementController {
                 .filter(a -> topicName.equals(a.getTopicName()))
                 .collect(Collectors.toList());
         return HttpResponse.ok(accesses);
+    }
+
+    @Get("/me")
+    @Operation(tags = {"Access Management"}, summary = "Get access management info about the current user")
+    public HttpResponse<?> me(String cluster) {
+        if (!isEnabled()) {
+            return notFoundResponse("Access management is disabled");
+        }
+        String username = getCurrentUsername();
+        return HttpResponse.ok(Map.of("approver", isSuperAdmin(username) || !getOwnedPrefixes(username).isEmpty()));
+    }
+
+    @Get("/topic/{topicName}/data-access")
+    @Operation(tags = {"Access Management"}, summary = "Check whether the current user can read the topic data")
+    public HttpResponse<?> dataAccess(String cluster, String topicName) {
+        if (!isEnabled()) {
+            return notFoundResponse("Access management is disabled");
+        }
+        return HttpResponse.ok(Map.of("read", canReadTopicData(cluster, topicName)));
     }
 
     // --- Owner/SuperAdmin endpoints ---
@@ -321,11 +351,28 @@ public class AccessManagementController {
         return HttpResponse.notFound(new JsonError(message));
     }
 
-    private String getCurrentUsername() {
+    private Authentication getCurrentAuthentication() {
         return applicationContext.getBean(SecurityService.class)
                 .getAuthentication()
-                .map(auth -> auth.getName())
                 .orElseThrow(() -> new IllegalStateException("Authentication required but not present"));
+    }
+
+    private String getCurrentUsername() {
+        return getCurrentAuthentication().getName();
+    }
+
+    // Same rule as AbstractController.checkIfClusterAndResourceAllowed for TOPIC_DATA:READ, which can't be reused
+    // here because it takes the resource from the calling method annotation.
+    private boolean canReadTopicData(String cluster, String topicName) {
+        List<Group> groups = new ArrayList<>(userGroupsResolver.resolve(getCurrentAuthentication()));
+        groups.addAll(securityProperties.getGroups().getOrDefault(securityProperties.getDefaultGroup(), List.of()));
+
+        return groups.stream()
+                .filter(group -> group.getClusters().stream().anyMatch(pattern -> Pattern.matches(pattern, cluster)))
+                .filter(group -> group.getPatterns().stream().anyMatch(pattern -> Pattern.matches(pattern, topicName)))
+                .flatMap(group -> securityProperties.getRoles().getOrDefault(group.getRole(), List.of()).stream())
+                .anyMatch(role -> role.getResources().contains(Role.Resource.TOPIC_DATA)
+                        && role.getActions().contains(Role.Action.READ));
     }
 
     private String validateRole(String role) {
