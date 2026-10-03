@@ -12,7 +12,7 @@
 # 1. Поднять инфраструктуру (Kafka, PostgreSQL, Schema Registry, Connect, ksqlDB)
 docker compose -f docker-compose-local.yml up -d
 
-# 2. Backend (Java 17, Micronaut 4.10.7, Gradle) — запуск на :8080
+# 2. Backend (Java 25, Micronaut 4.10.7, Gradle) — запуск на :8080
 MICRONAUT_CONFIG_FILES=application-local.yml ./gradlew run -x installFrontend -x assembleFrontend
 
 # 3. Frontend (React, Vite) — запуск на :4000 (или следующий свободный)
@@ -62,7 +62,7 @@ docker compose -f docker-compose-dev.yml up
   - Все страницы наследуют `Root` — базовый класс с `getApi()`/`postApi()`/`putApi()`/`removeApi()`
   - Авторизация через `sessionStorage`: `roles`, `user`, `auths` (включая `accessManagementEnabled`)
   - Флаг `accessManagementEnabled` из `/api/auths` управляет видимостью раздела Access Management
-- `fork-docs/TASK-*` — постановки задач на доработку (ADR, аналитика, ревью)
+- `openspec/specs/` — спецификации текущего поведения форка, `openspec/changes/` — изменения в работе и архив
 
 ## Система авторизации
 
@@ -74,15 +74,24 @@ docker compose -f docker-compose-dev.yml up
 
 ## Принципы работы с форком
 
-- **Минимально трогаем существующий код** — чтобы rebase с оригиналом проходил без конфликтов
+- **Минимально трогаем существующий код** — чтобы merge из оригинала проходил без конфликтов
 - Новый код — в отдельных пакетах (например `org.akhq.configs.accessmanagement`)
 - Фичи форка управляются флагом `enabled` в конфигурации — при `false` поведение = оригинал
 - Текст коммитов на русском, начинать с номера задачи (спросить у пользователя)
-- Постановки задач в `fork-docs/TASK-*/`
 - **ErrorController** ловит `Throwable` → 500, поэтому в контроллерах используем `HttpResponse<?>` вместо исключений
 - Тесты с БД наследуются от `AbstractTestWithPostgres` (Kafka + PostgreSQL Testcontainers)
 
-## Текущие задачи
+## OpenSpec
 
-- **TASK-1**: Система самообслуживания доступов к топикам (PostgreSQL, Flyway, Micronaut Data JPA). Backend готов, frontend в работе. См. `fork-docs/TASK-1/`
-- 
+Любое изменение форка, включая мелкие правки и вливание upstream, оформляется как change OpenSpec.
+
+- Перед первой работой: `openspec init --tools claude` — генерирует `/opsx:*` скиллы в `.claude/` (в git не коммитятся, см. `.claude/.gitignore`)
+- Имя change: `task-<N>-<slug>` (только строчные), коммиты: `TASK-<N>: ...`, ветка: `task-<N>-<slug>` от `release/ak-fork`
+- Цикл: `/opsx:propose` → `/opsx:apply` → `/opsx:verify` → `/opsx:archive`
+- Спеки описывают поведение, а не код; репо публичное — в спеках и changes только плейсхолдеры (example.com, `team-a.*`), никаких внутренних хостов, AD-групп и реальных email
+
+## Ветки и upstream
+
+- `release/ak-fork` — основная ветка форка, из неё собирается релиз
+- `dev` — зеркало upstream `tchiotludo/akhq` плюс правки CI под форк
+- Upstream вливается только merge (без rebase): upstream → `dev` → `release/ak-fork`
