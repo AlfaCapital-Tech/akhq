@@ -37,4 +37,6 @@
     <logger name="io.micronaut" level="WARN"/>
     <logger name="io.micronaut.context.DefaultApplicationContext" level="INFO" />
     <logger name="io.micronaut.runtime.Micronaut" level="INFO" />
+    <!-- шумный WARN Kafka-клиента при ребалансе (KAFKA-20449), как в logback.xml -->
+    <logger name="org.apache.kafka.clients.consumer.internals.OffsetFetcherUtils" level="ERROR" />
 </configuration>

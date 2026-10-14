@@ -36,7 +36,6 @@ configurations.all {
     exclude group: 'org.slf4j', module: 'slf4j-log4j12'
     exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j-impl'
     exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j2-impl'
-    exclude group: 'org.apache.logging.log4j', module: 'log4j-to-slf4j'
     exclude group: 'org.slf4j', module: 'slf4j-reload4j'
     exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
     exclude group: 'org.apache.logging.log4j', module: 'log4j-1.2-api'
@@ -147,6 +146,8 @@ dependencies {
     implementation("org.slf4j:slf4j-api:2.0.19")
     implementation("org.slf4j:jul-to-slf4j:2.0.19")
     implementation("org.slf4j:log4j-over-slf4j:2.0.19")
+    // Log4j API users (Hibernate via jboss-logging, ksqlDB client) log through logback instead of a no-op fallback
+    runtimeOnly("org.apache.logging.log4j:log4j-to-slf4j")
 
     // utils
     implementation("org.codehaus.httpcache4j.uribuilder:uribuilder:2.0.0")
