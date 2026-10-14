@@ -179,6 +179,8 @@ public class KafkaTestCluster implements Runnable {
         testUtils.createTopic(TOPIC_STREAM_MAP, 3, (short) 1);
         testUtils.createTopic(TOPIC_STREAM_COUNT, 3, (short) 1);
         testUtils.createTopic(TOPIC_AUDIT, 1, (short) 1);
+        // Kafka Streams dies on source topics missing from metadata, give the broker time to propagate them
+        Thread.sleep(2000);
         stream = new StreamTest(this.connectionString.getKafka(), this.connectionString.getSchemaRegistry());
         stream.run();
 

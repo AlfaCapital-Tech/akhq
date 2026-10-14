@@ -219,17 +219,21 @@ class TopicRepositoryTest extends AbstractTest {
         topicRepository.create(KafkaTestCluster.CLUSTER_ID, "createWithConfig", 8, (short) 1, Collections.singletonList(
             new Config(TopicConfig.SEGMENT_MS_CONFIG, "1000")
         ));
+        try {
+            // Give Kafka time to propagate the new topic metadata
+            Thread.sleep(2000);
 
-        Optional<String> option = configRepository.findByTopic(KafkaTestCluster.CLUSTER_ID, "createWithConfig")
-            .stream()
-            .filter(r -> r.getName().equals(TopicConfig.SEGMENT_MS_CONFIG))
-            .findFirst()
-            .map(Config::getValue);
+            Optional<String> option = configRepository.findByTopic(KafkaTestCluster.CLUSTER_ID, "createWithConfig")
+                .stream()
+                .filter(r -> r.getName().equals(TopicConfig.SEGMENT_MS_CONFIG))
+                .findFirst()
+                .map(Config::getValue);
 
-        assertEquals(8, topicRepository.findByName(KafkaTestCluster.CLUSTER_ID, "createWithConfig").getPartitions().size());
-        assertEquals("1000", option.get());
-
-        topicRepository.delete(KafkaTestCluster.CLUSTER_ID, "createWithConfig");
+            assertEquals(8, topicRepository.findByName(KafkaTestCluster.CLUSTER_ID, "createWithConfig").getPartitions().size());
+            assertEquals("1000", option.get());
+        } finally {
+            topicRepository.delete(KafkaTestCluster.CLUSTER_ID, "createWithConfig");
+        }
     }
 
     @Test
