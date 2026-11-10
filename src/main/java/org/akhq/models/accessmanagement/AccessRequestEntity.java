@@ -51,6 +51,13 @@ public class AccessRequestEntity {
     @Column(name = "resolved_at")
     private Instant resolvedAt;
 
+    /** Cluster the request was created in (from the API path); null for rows created before V3. */
+    private String cluster;
+
+    /** When the last reminder email was sent; null until the first reminder. */
+    @Column(name = "last_reminded_at")
+    private Instant lastRemindedAt;
+
     @PrePersist
     public void prePersist() {
         if (id == null) {

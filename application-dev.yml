@@ -28,6 +28,7 @@ akhq:
       enabled: true
       subject-prefix: "[AKHQ]"
       base-url: "http://localhost:8080"
+      reminder-interval: 3d   # повтор письма владельцам, пока запрос в Pending; 0 — без напоминаний
 
   security:
     default-group: browser

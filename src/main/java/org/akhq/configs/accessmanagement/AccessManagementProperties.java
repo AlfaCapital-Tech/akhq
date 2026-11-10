@@ -3,6 +3,7 @@ package org.akhq.configs.accessmanagement;
 import io.micronaut.context.annotation.ConfigurationProperties;
 import lombok.Data;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -51,5 +52,7 @@ public class AccessManagementProperties {
         Boolean enabled = false;
         String subjectPrefix = "[AKHQ]";
         String baseUrl;
+        /** How often owners are reminded about a pending request; zero disables reminders. */
+        Duration reminderInterval = Duration.ofDays(3);
     }
 }

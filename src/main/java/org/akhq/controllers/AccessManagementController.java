@@ -119,6 +119,7 @@ public class AccessManagementController {
         entity.setRole(body.getRole());
         entity.setStatus(AccessRequestEntity.STATUS_PENDING);
         entity.setReason(body.getReason());
+        entity.setCluster(cluster);
 
         if (isPrefix) {
             entity.setPrefix(body.getPrefix());

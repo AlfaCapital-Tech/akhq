@@ -9,6 +9,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLayerGroup } from '@fortawesome/free-solid-svg-icons';
 import RequestPrefixModal from './RequestPrefixModal/RequestPrefixModal';
 import AccessTour from './Onboarding/AccessTour';
+import RequestCard from './RequestCard/RequestCard';
+import { requestIdFromSearch, resolveLinkedRequest } from './RequestCard/linkedRequest';
+import './RequestCard/requestCard.css';
 import {
   uriAccessManagementMyRequests,
   uriAccessManagementPendingRequests,
@@ -38,15 +41,29 @@ class AccessManagement extends Root {
     rejectRequestId: null,
     revokeAccessId: null,
     rejectReason: '',
-    showPrefixModal: false
+    showPrefixModal: false,
+    // Request opened by the link from the notification email (?request=<id>)
+    linkedRequestId: null,
+    linkedRequestScrolled: false
   };
 
   componentDidMount() {
     const { clusterId } = this.props.params;
-    this.setState({ clusterId }, () => {
+    const linkedRequestId = requestIdFromSearch(this.props.location?.search);
+    this.setState({ clusterId, linkedRequestId, selectedTab: 'pending' }, () => {
       this.loadMyRequests();
       this.loadManagementData();
     });
+  }
+
+  componentDidUpdate() {
+    const { linkedRequestId, linkedRequestScrolled, managementLoading } = this.state;
+    if (!linkedRequestId || linkedRequestScrolled || managementLoading) return;
+    const marker = document.querySelector('[data-request-highlight]');
+    if (marker && typeof marker.scrollIntoView === 'function') {
+      marker.scrollIntoView({ block: 'center' });
+    }
+    this.setState({ linkedRequestScrolled: true });
   }
 
   async loadMyRequests() {
@@ -166,11 +183,41 @@ class AccessManagement extends Root {
 
   // --- Helpers ---
 
-  renderTarget(item) {
+  renderTarget(item, withMarker = true) {
+    const marker =
+      withMarker && this.state.linkedRequestId && item.id === this.state.linkedRequestId ? (
+        <span data-request-highlight="" />
+      ) : null;
     if (item.prefix) {
-      return <><span className="badge bg-primary me-1">Prefix</span>{item.prefix}</>;
+      return (
+        <>
+          {marker}
+          <span className="badge bg-primary me-1">Prefix</span>
+          {item.prefix}
+        </>
+      );
     }
-    return item.topicName || '-';
+    return (
+      <>
+        {marker}
+        {item.topicName || '-'}
+      </>
+    );
+  }
+
+  renderLinkedRequest() {
+    const { linkedRequestId, allRequests, myRequests, myRequestsLoading, managementLoading } = this.state;
+    if (!linkedRequestId || myRequestsLoading || managementLoading) return null;
+    return (
+      <RequestCard
+        result={resolveLinkedRequest(linkedRequestId, { allRequests, myRequests })}
+        renderStatus={status => this.renderStatus(status)}
+        renderTarget={item => this.renderTarget(item, false)}
+        formatDate={date => this.formatDate(date)}
+        onApprove={id => this.handleApprove(id)}
+        onReject={id => this.openRejectModal(id)}
+      />
+    );
   }
 
   // --- My Requests section ---
@@ -486,6 +533,7 @@ class AccessManagement extends Root {
             <FontAwesomeIcon icon={faLayerGroup} aria-hidden={true} /> Request Prefix Access
           </button>
         </Header>
+        {this.renderLinkedRequest()}
         <div data-tour="my-requests">
           <h4>My Requests</h4>
           {this.renderMyRequests()}
