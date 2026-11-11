@@ -98,6 +98,11 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
 
         assertFalse(result.isEmpty());
         assertEquals(createdRequestId, result.get(0).getId());
+        // requester sees who is expected to decide: the owners of test\..*
+        assertNotNull(result.get(0).getApprovers());
+        assertEquals(1, result.get(0).getApprovers().size());
+        assertEquals("user", result.get(0).getApprovers().get(0).getUsername());
+        assertEquals("user@test.local", result.get(0).getApprovers().get(0).getEmail());
     }
 
     @Test
@@ -408,5 +413,43 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
         );
 
         assertTrue(result.stream().anyMatch(a -> "test\\..*".equals(a.getPrefix())));
+    }
+
+    @Test
+    @Order(90)
+    void approversFallBackToSuperAdminsForUnownedTopic() {
+        AccessManagementController.CreateRequestBody body =
+                new AccessManagementController.CreateRequestBody("orphan.topic1", null, "READ", "No owner here");
+
+        AccessRequestEntity created = client.toBlocking().retrieve(
+                HttpRequest.POST(BASE_URL + "/request", body).basicAuth("admin", "pass"),
+                AccessRequestEntity.class
+        );
+        assertEquals(1, created.getApprovers().size());
+        assertEquals("ADMIN", created.getApprovers().get(0).getUsername());
+        assertEquals("admin@test.local", created.getApprovers().get(0).getEmail());
+
+        List<AccessRequestEntity> mine = client.toBlocking().retrieve(
+                HttpRequest.GET(BASE_URL + "/requests/my").basicAuth("admin", "pass"),
+                Argument.listOf(AccessRequestEntity.class)
+        );
+        AccessRequestEntity fromList = mine.stream()
+                .filter(r -> created.getId().equals(r.getId()))
+                .findFirst().orElseThrow();
+        assertEquals("ADMIN", fromList.getApprovers().get(0).getUsername());
+    }
+
+    @Test
+    @Order(91)
+    void approversOfPrefixRequestAreExactPrefixOwners() {
+        List<AccessRequestEntity> mine = client.toBlocking().retrieve(
+                HttpRequest.GET(BASE_URL + "/requests/my").basicAuth("admin", "pass"),
+                Argument.listOf(AccessRequestEntity.class)
+        );
+        AccessRequestEntity prefixRequest = mine.stream()
+                .filter(r -> "test\\..*".equals(r.getPrefix()))
+                .findFirst().orElseThrow();
+        assertEquals(List.of("user"),
+                prefixRequest.getApprovers().stream().map(a -> a.getUsername()).toList());
     }
 }

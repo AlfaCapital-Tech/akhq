@@ -34,3 +34,11 @@ export function resolveLinkedRequest(requestId, { allRequests = [], myRequests =
 
   return { state: 'not-found', request: null };
 }
+
+/**
+ * Who the requester should wait for (and ping): approvers returned by the server for own requests.
+ * Returns [] when the server did not send the list (e.g. approver's lists).
+ */
+export function approversOf(request) {
+  return Array.isArray(request?.approvers) ? request.approvers.filter(a => a && a.username) : [];
+}

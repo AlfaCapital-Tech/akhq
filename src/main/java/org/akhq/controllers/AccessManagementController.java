@@ -24,6 +24,7 @@ import org.akhq.configs.security.Group;
 import org.akhq.configs.security.Role;
 import org.akhq.configs.security.SecurityProperties;
 import org.akhq.models.accessmanagement.AccessRequestEntity;
+import org.akhq.models.accessmanagement.Approver;
 import org.akhq.models.accessmanagement.TopicAccessEntity;
 import org.akhq.modules.accessmanagement.NotificationService;
 import org.akhq.repositories.accessmanagement.AccessRequestRepository;
@@ -129,6 +130,7 @@ public class AccessManagementController {
 
         AccessRequestEntity saved = accessRequestRepository.save(entity);
         notificationService.notifyNewRequest(saved);
+        saved.setApprovers(approversFor(saved));
         return HttpResponse.ok(saved);
     }
 
@@ -138,7 +140,9 @@ public class AccessManagementController {
         if (!isEnabled()) {
             return notFoundResponse("Access management is disabled");
         }
-        return HttpResponse.ok(accessRequestRepository.findByUsername(getCurrentUsername()));
+        List<AccessRequestEntity> mine = accessRequestRepository.findByUsername(getCurrentUsername());
+        mine.forEach(r -> r.setApprovers(approversFor(r)));
+        return HttpResponse.ok(mine);
     }
 
     @Get("/topic/{topicName}/owners")
@@ -467,6 +471,27 @@ public class AccessManagementController {
             }
         }
         return result;
+    }
+
+    /** Owners of the request target; super admins when the target has no owner (same rule as notifications). */
+    private List<Approver> approversFor(AccessRequestEntity request) {
+        List<Approver> owners = new ArrayList<>();
+        for (PrefixOwner po : properties.getPrefixOwners()) {
+            boolean matches = request.getPrefix() != null
+                    ? po.getPrefix().equals(request.getPrefix())
+                    : request.getTopicName() != null && Pattern.matches(po.getPrefix(), request.getTopicName());
+            if (matches) {
+                for (Owner o : po.getOwners()) {
+                    owners.add(new Approver(o.getUsername(), o.getEmail()));
+                }
+            }
+        }
+        if (owners.isEmpty()) {
+            for (AccessManagementProperties.SuperAdmin sa : properties.getSuperAdmins()) {
+                owners.add(new Approver(sa.getUsername(), sa.getEmail()));
+            }
+        }
+        return owners;
     }
 
     // --- DTOs ---

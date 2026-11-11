@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { requestIdFromSearch, resolveLinkedRequest } from './linkedRequest';
+import { approversOf, requestIdFromSearch, resolveLinkedRequest } from './linkedRequest';
 
 const pending = { id: 'a1', status: 'PENDING', username: 'alice' };
 const approved = { id: 'b2', status: 'APPROVED', username: 'bob', resolvedBy: 'owner-a' };
@@ -43,5 +43,18 @@ describe('resolveLinkedRequest', () => {
 
   it('returns null without an id', () => {
     expect(resolveLinkedRequest(null, { allRequests: [pending] })).toBeNull();
+  });
+});
+
+describe('approversOf', () => {
+  it('returns approvers sent by the server', () => {
+    const r = { id: 'a1', approvers: [{ username: 'owner-a', email: 'owner-a@example.com' }] };
+    expect(approversOf(r)).toEqual([{ username: 'owner-a', email: 'owner-a@example.com' }]);
+  });
+
+  it('is empty without the field or for malformed entries', () => {
+    expect(approversOf({ id: 'a1' })).toEqual([]);
+    expect(approversOf(null)).toEqual([]);
+    expect(approversOf({ approvers: [null, { email: 'x@example.com' }] })).toEqual([]);
   });
 });

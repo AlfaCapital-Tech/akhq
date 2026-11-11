@@ -10,7 +10,7 @@ import { faLayerGroup } from '@fortawesome/free-solid-svg-icons';
 import RequestPrefixModal from './RequestPrefixModal/RequestPrefixModal';
 import AccessTour from './Onboarding/AccessTour';
 import RequestCard from './RequestCard/RequestCard';
-import { requestIdFromSearch, resolveLinkedRequest } from './RequestCard/linkedRequest';
+import { approversOf, requestIdFromSearch, resolveLinkedRequest } from './RequestCard/linkedRequest';
 import './RequestCard/requestCard.css';
 import {
   uriAccessManagementMyRequests,
@@ -183,6 +183,23 @@ class AccessManagement extends Root {
 
   // --- Helpers ---
 
+  /** Owners (or super admins) the requester is waiting for, with mailto links. */
+  renderApprovers(approvers) {
+    if (!approvers || approvers.length === 0) return '-';
+    return approvers.map((a, i) => (
+      <span key={a.username}>
+        {i > 0 && ', '}
+        {a.email ? (
+          <a href={`mailto:${a.email}`} title={a.email}>
+            {a.username}
+          </a>
+        ) : (
+          a.username
+        )}
+      </span>
+    ));
+  }
+
   renderTarget(item, withMarker = true) {
     const marker =
       withMarker && this.state.linkedRequestId && item.id === this.state.linkedRequestId ? (
@@ -212,6 +229,7 @@ class AccessManagement extends Root {
       <RequestCard
         result={resolveLinkedRequest(linkedRequestId, { allRequests, myRequests })}
         renderStatus={status => this.renderStatus(status)}
+        renderApprovers={approvers => this.renderApprovers(approvers)}
         renderTarget={item => this.renderTarget(item, false)}
         formatDate={date => this.formatDate(date)}
         onApprove={id => this.handleApprove(id)}
@@ -237,6 +255,12 @@ class AccessManagement extends Root {
             cell: item => this.renderStatus(item.status)
           },
           { id: 'reason', accessor: 'reason', colName: 'Reason', cell: item => item.reason || '-' },
+          {
+            id: 'approvers',
+            accessor: 'approvers',
+            colName: 'Approvers',
+            cell: item => this.renderApprovers(approversOf(item))
+          },
           {
             id: 'rejectReason',
             accessor: 'rejectReason',

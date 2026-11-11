@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Serdeable
@@ -57,6 +58,10 @@ public class AccessRequestEntity {
     /** When the last reminder email was sent; null until the first reminder. */
     @Column(name = "last_reminded_at")
     private Instant lastRemindedAt;
+
+    /** Computed for the requester's own list, not stored: who is expected to decide. */
+    @Transient
+    private List<Approver> approvers;
 
     @PrePersist
     public void prePersist() {

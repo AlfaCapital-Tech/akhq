@@ -1,10 +1,11 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { approversOf } from './linkedRequest';
 
 /**
  * Card shown above the Access Management page when it is opened by the link from the notification email.
  */
-function RequestCard({ result, renderStatus, renderTarget, formatDate, onApprove, onReject }) {
+function RequestCard({ result, renderStatus, renderTarget, renderApprovers, formatDate, onApprove, onReject }) {
   if (!result) return null;
 
   if (result.state === 'not-found') {
@@ -62,7 +63,9 @@ function RequestCard({ result, renderStatus, renderTarget, formatDate, onApprove
           </div>
         )}
         {state === 'pending-requester' && (
-          <p className="text-muted mt-3 mb-0">Waiting for the owner&apos;s decision.</p>
+          <p className="text-muted mt-3 mb-0" data-testid="request-card-approvers">
+            Waiting for the decision of: {renderApprovers(approversOf(request))}
+          </p>
         )}
       </div>
     </div>
@@ -76,6 +79,7 @@ RequestCard.propTypes = {
   }),
   renderStatus: PropTypes.func.isRequired,
   renderTarget: PropTypes.func.isRequired,
+  renderApprovers: PropTypes.func.isRequired,
   formatDate: PropTypes.func.isRequired,
   onApprove: PropTypes.func.isRequired,
   onReject: PropTypes.func.isRequired
