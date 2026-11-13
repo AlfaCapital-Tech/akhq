@@ -162,7 +162,7 @@ public class AccessManagementController {
             return notFoundResponse("Access management is disabled");
         }
         String username = getCurrentUsername();
-        List<TopicAccessEntity> accesses = topicAccessRepository.findByUsername(username).stream()
+        List<TopicAccessEntity> accesses = topicAccessRepository.findByUsernameAndRevokedAtIsNull(username).stream()
                 .filter(a -> topicName.equals(a.getTopicName()))
                 .collect(Collectors.toList());
         return HttpResponse.ok(accesses);
@@ -263,10 +263,10 @@ public class AccessManagementController {
         Optional<TopicAccessEntity> existingAccess;
         if (request.getPrefix() != null) {
             existingAccess = topicAccessRepository
-                    .findByUsernameAndPrefixAndRole(request.getUsername(), request.getPrefix(), request.getRole());
+                    .findByUsernameAndPrefixAndRoleAndRevokedAtIsNull(request.getUsername(), request.getPrefix(), request.getRole());
         } else {
             existingAccess = topicAccessRepository
-                    .findByUsernameAndTopicNameAndRole(request.getUsername(), request.getTopicName(), request.getRole());
+                    .findByUsernameAndTopicNameAndRoleAndRevokedAtIsNull(request.getUsername(), request.getTopicName(), request.getRole());
         }
         if (existingAccess.isEmpty()) {
             topicAccessRepository.save(access);
@@ -311,7 +311,7 @@ public class AccessManagementController {
     }
 
     @Get("/accesses")
-    @Operation(tags = {"Access Management"}, summary = "Get current accesses for owned topics")
+    @Operation(tags = {"Access Management"}, summary = "Get active and revoked accesses for owned topics")
     public HttpResponse<?> accesses(String cluster) {
         if (!isEnabled()) {
             return notFoundResponse("Access management is disabled");
@@ -341,8 +341,9 @@ public class AccessManagementController {
                     .body(new JsonError("You are not an owner of: " + target));
         }
 
-        topicAccessRepository.delete(access);
-        notificationService.notifyRevoked(access, username);
+        if (topicAccessRepository.revoke(id, username, Instant.now()) == 1) {
+            notificationService.notifyRevoked(access, username);
+        }
         return HttpResponse.ok();
     }
 

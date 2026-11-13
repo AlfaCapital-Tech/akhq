@@ -77,7 +77,7 @@ class DatabaseClaimProviderDynamicGroupsTest extends AbstractTestWithPostgres {
         assertTrue(patterns(afterGrant).contains(List.of(Pattern.quote(TOPIC))));
         assertTrue(afterGrant.stream().allMatch(g -> g.getRole().equals("topic-read")));
 
-        topicAccessRepository.deleteById(access.getId());
+        assertEquals(1, topicAccessRepository.revoke(access.getId(), "admin", Instant.now()));
         assertEquals(List.of(List.of("public\\..*")), patterns(userGroupsResolver.resolve(token)));
     }
 
@@ -88,7 +88,7 @@ class DatabaseClaimProviderDynamicGroupsTest extends AbstractTestWithPostgres {
         TopicAccessEntity access = grant("alice");
         assertEquals(List.of(List.of(Pattern.quote(TOPIC))), patterns(userGroupsResolver.resolve(mcp)));
 
-        topicAccessRepository.deleteById(access.getId());
+        assertEquals(1, topicAccessRepository.revoke(access.getId(), "admin", Instant.now()));
         assertTrue(userGroupsResolver.resolve(mcp).isEmpty());
     }
 

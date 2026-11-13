@@ -12,6 +12,7 @@ import org.akhq.models.accessmanagement.AccessRequestEntity;
 import org.akhq.models.accessmanagement.TopicAccessEntity;
 import org.junit.jupiter.api.*;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,7 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
     private static UUID createdRequestId;
     private static UUID secondRequestId;
     private static UUID createdAccessId;
+    private static Instant firstRevokedAt;
 
     @NonNull
     @Override
@@ -231,12 +233,61 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
         );
 
         assertEquals(HttpStatus.OK, response.getStatus());
+        assertTrue(myAccess("test.topic1").isEmpty());
 
-        List<TopicAccessEntity> result = client.toBlocking().retrieve(
-                HttpRequest.GET(BASE_URL + "/topic/test.topic1/my-access").basicAuth("admin", "pass"),
-                Argument.listOf(TopicAccessEntity.class)
+        TopicAccessEntity revoked = accessById(createdAccessId);
+        assertEquals("admin", revoked.getRevokedBy());
+        assertNotNull(revoked.getRevokedAt());
+        firstRevokedAt = revoked.getRevokedAt();
+
+        List<AccessRequestEntity> mine = client.toBlocking().retrieve(
+                HttpRequest.GET(BASE_URL + "/requests/my").basicAuth("admin", "pass"),
+                Argument.listOf(AccessRequestEntity.class)
         );
-        assertTrue(result.isEmpty());
+        assertEquals(AccessRequestEntity.STATUS_APPROVED, mine.stream()
+                .filter(r -> createdRequestId.equals(r.getId()))
+                .findFirst().orElseThrow().getStatus());
+    }
+
+    @Test
+    @Order(31)
+    void repeatedRevokePreservesFirstAudit() {
+        HttpResponse<?> response = client.toBlocking().exchange(
+                HttpRequest.DELETE(BASE_URL + "/accesses/" + createdAccessId)
+                        .basicAuth("admin", "pass")
+        );
+
+        assertEquals(HttpStatus.OK, response.getStatus());
+        TopicAccessEntity revoked = accessById(createdAccessId);
+        assertEquals("admin", revoked.getRevokedBy());
+        assertEquals(firstRevokedAt, revoked.getRevokedAt());
+    }
+
+    @Test
+    @Order(32)
+    void foreignRevokeReturnsForbidden() {
+        HttpClientResponseException ex = assertThrows(HttpClientResponseException.class, () ->
+                client.toBlocking().exchange(
+                        HttpRequest.DELETE(BASE_URL + "/accesses/" + createdAccessId)
+                                .basicAuth("MyUser3!@yàhöù.com", "pass")
+                )
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatus());
+        assertEquals(firstRevokedAt, accessById(createdAccessId).getRevokedAt());
+    }
+
+    @Test
+    @Order(33)
+    void regrantAfterRevokeCreatesNewTopicAccess() {
+        AccessRequestEntity request = createRequest("test.topic1", null);
+        approve(request.getId());
+
+        List<TopicAccessEntity> active = myAccess("test.topic1");
+        assertEquals(1, active.size());
+        assertNotEquals(createdAccessId, active.get(0).getId());
+        assertNull(active.get(0).getRevokedAt());
+        assertEquals(firstRevokedAt, accessById(createdAccessId).getRevokedAt());
     }
 
     @Test
@@ -345,6 +396,7 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
     // --- Prefix access tests ---
 
     private static UUID prefixRequestId;
+    private static UUID prefixAccessId;
 
     @Test
     @Order(80)
@@ -407,12 +459,33 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
     @Test
     @Order(84)
     void prefixAccessVisible() {
-        List<TopicAccessEntity> result = client.toBlocking().retrieve(
-                HttpRequest.GET(BASE_URL + "/accesses").basicAuth("admin", "pass"),
-                Argument.listOf(TopicAccessEntity.class)
-        );
+        TopicAccessEntity prefixAccess = allAccesses().stream()
+                .filter(a -> "test\\..*".equals(a.getPrefix()))
+                .findFirst().orElseThrow();
+        assertNull(prefixAccess.getRevokedAt());
+        prefixAccessId = prefixAccess.getId();
+    }
 
-        assertTrue(result.stream().anyMatch(a -> "test\\..*".equals(a.getPrefix())));
+    @Test
+    @Order(85)
+    void regrantAfterRevokeCreatesNewPrefixAccess() {
+        HttpResponse<?> response = client.toBlocking().exchange(
+                HttpRequest.DELETE(BASE_URL + "/accesses/" + prefixAccessId)
+                        .basicAuth("admin", "pass")
+        );
+        assertEquals(HttpStatus.OK, response.getStatus());
+
+        AccessRequestEntity request = createRequest(null, "test\\..*");
+        approve(request.getId());
+
+        List<TopicAccessEntity> records = allAccesses().stream()
+                .filter(a -> "test\\..*".equals(a.getPrefix()))
+                .toList();
+        assertEquals(2, records.size());
+        List<TopicAccessEntity> active = records.stream().filter(a -> a.getRevokedAt() == null).toList();
+        assertEquals(1, active.size());
+        assertNotEquals(prefixAccessId, active.get(0).getId());
+        assertNotNull(accessById(prefixAccessId).getRevokedAt());
     }
 
     @Test
@@ -451,5 +524,41 @@ public class AccessManagementControllerTest extends AbstractTestWithPostgres {
                 .findFirst().orElseThrow();
         assertEquals(List.of("user"),
                 prefixRequest.getApprovers().stream().map(a -> a.getUsername()).toList());
+    }
+
+    private List<TopicAccessEntity> allAccesses() {
+        return client.toBlocking().retrieve(
+                HttpRequest.GET(BASE_URL + "/accesses").basicAuth("admin", "pass"),
+                Argument.listOf(TopicAccessEntity.class)
+        );
+    }
+
+    private TopicAccessEntity accessById(UUID id) {
+        return allAccesses().stream().filter(a -> id.equals(a.getId())).findFirst().orElseThrow();
+    }
+
+    private List<TopicAccessEntity> myAccess(String topicName) {
+        return client.toBlocking().retrieve(
+                HttpRequest.GET(BASE_URL + "/topic/" + topicName + "/my-access").basicAuth("admin", "pass"),
+                Argument.listOf(TopicAccessEntity.class)
+        );
+    }
+
+    private AccessRequestEntity createRequest(String topicName, String prefix) {
+        AccessManagementController.CreateRequestBody body =
+                new AccessManagementController.CreateRequestBody(topicName, prefix, "READ", "Regrant after revoke");
+        return client.toBlocking().retrieve(
+                HttpRequest.POST(BASE_URL + "/request", body).basicAuth("admin", "pass"),
+                AccessRequestEntity.class
+        );
+    }
+
+    private void approve(UUID requestId) {
+        AccessRequestEntity approved = client.toBlocking().retrieve(
+                HttpRequest.PUT(BASE_URL + "/requests/" + requestId + "/approve", "")
+                        .basicAuth("admin", "pass"),
+                AccessRequestEntity.class
+        );
+        assertEquals(AccessRequestEntity.STATUS_APPROVED, approved.getStatus());
     }
 }

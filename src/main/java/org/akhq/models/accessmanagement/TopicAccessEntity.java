@@ -39,6 +39,12 @@ public class TopicAccessEntity {
     @Column(name = "request_id")
     private UUID requestId;
 
+    @Column(name = "revoked_by")
+    private String revokedBy;
+
+    @Column(name = "revoked_at")
+    private Instant revokedAt;
+
     @PrePersist
     public void prePersist() {
         if (id == null) {

@@ -384,10 +384,30 @@ class AccessManagement extends Root {
             cell: item => this.formatDate(item.grantedAt)
           },
           {
+            id: 'status',
+            accessor: 'revokedAt',
+            colName: 'Status',
+            cell: item => item.revokedAt
+              ? <span className="badge bg-danger">Revoked</span>
+              : <span className="badge bg-success">Active</span>
+          },
+          {
+            id: 'revokedBy',
+            accessor: 'revokedBy',
+            colName: 'Revoked By',
+            cell: item => item.revokedBy || '-'
+          },
+          {
+            id: 'revokedAt',
+            accessor: 'revokedAt',
+            colName: 'Revoked At',
+            cell: item => this.formatDate(item.revokedAt)
+          },
+          {
             id: 'actions',
             accessor: 'id',
             colName: 'Actions',
-            cell: item => (
+            cell: item => item.revokedAt ? '-' : (
               <button
                 className="btn btn-danger btn-sm"
                 onClick={() => this.openRevokeModal(item.id)}
@@ -398,7 +418,7 @@ class AccessManagement extends Root {
           }
         ]}
         data={accesses}
-        noContent="No active accesses"
+        noContent="No accesses found"
       />
     );
   }
@@ -455,7 +475,7 @@ class AccessManagement extends Root {
                 className={this.tabClassName('accesses')}
                 onClick={() => this.setState({ selectedTab: 'accesses' })}
               >
-                Current Accesses
+                Accesses
               </button>
             </li>
           </ul>

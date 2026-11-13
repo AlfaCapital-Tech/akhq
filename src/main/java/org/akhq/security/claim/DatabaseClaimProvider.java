@@ -49,7 +49,7 @@ public class DatabaseClaimProvider implements ClaimProvider {
 
     Map<String, List<Group>> resolveDynamicGroups(String username) {
         Map<String, List<Group>> groups = new HashMap<>();
-        List<TopicAccessEntity> accesses = topicAccessRepository.findByUsername(username);
+        List<TopicAccessEntity> accesses = topicAccessRepository.findByUsernameAndRevokedAtIsNull(username);
         if (accesses.isEmpty()) {
             return groups;
         }
